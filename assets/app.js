@@ -391,7 +391,7 @@ window.App = (function () {
     card.className = 'overlay-card';
 
     var h2 = document.createElement('h2');
-    h2.textContent = 'All done — thank you!';
+    h2.textContent = 'Thank you for your participation!';
 
     var sub = document.createElement('p');
     sub.className = 'muted';
