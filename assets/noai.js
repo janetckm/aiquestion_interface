@@ -10,9 +10,11 @@
   }
 
   var step = 'demographics';
+  var submitted = false;
   var btnBack = document.getElementById('btn-back');
   var btnNext = document.getElementById('btn-next');
   var btnSubmit = document.getElementById('btn-submit');
+  var btnReset = document.getElementById('btn-reset');
   var counter = document.getElementById('counter');
 
   App.renderDemographics(document.getElementById('demographics'));
@@ -27,11 +29,28 @@
 
   function persist() {
     updateCounter();
+    if (submitted) return;
     App.storageSet(STORAGE_KEY, {
       demographics: App.readDemographics(),
       answers: App.readAnswers()
     });
   }
+
+  /* Researcher control: wipe everything and reload a blank form. */
+  function resetSession() {
+    submitted = true;   // stop beforeunload from re-saving what we just cleared
+    App.storageClear(STORAGE_KEY);
+    sessionStorage.removeItem('started_at_' + MODE);
+    window.location.reload();
+  }
+
+  function confirmReset() {
+    if (window.confirm('Clear all entries and start fresh for the next participant?')) {
+      resetSession();
+    }
+  }
+
+  btnReset.addEventListener('click', confirmReset);
 
   function restore() {
     var saved = App.storageGet(STORAGE_KEY);
@@ -73,9 +92,10 @@
     }
 
     var session = App.buildSession(MODE, App.readDemographics(), App.readAnswers(), []);
+    submitted = true;
     App.storageClear(STORAGE_KEY);
     App.storageSet('study.last.' + MODE, session);
-    App.showSubmitOverlay(session);
+    App.showSubmitOverlay(session, { onReset: confirmReset });
   });
 
   window.addEventListener('beforeunload', persist);

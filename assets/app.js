@@ -383,7 +383,7 @@ window.App = (function () {
     };
   }
 
-  function showSubmitOverlay(session) {
+  function showSubmitOverlay(session, opts) {
     var overlay = document.createElement('div');
     overlay.className = 'overlay';
 
@@ -423,6 +423,15 @@ window.App = (function () {
 
     actions.appendChild(btnXlsx);
     actions.appendChild(btnJson);
+
+    if (opts && typeof opts.onReset === 'function') {
+      var btnReset = document.createElement('button');
+      btnReset.className = 'btn btn-ghost';
+      btnReset.textContent = 'Reset for the next participant';
+      btnReset.addEventListener('click', opts.onReset);
+      actions.appendChild(btnReset);
+    }
+
     actions.appendChild(btnHome);
 
     var note = document.createElement('p');

@@ -28,11 +28,13 @@
   var chat = [];
   var sending = false;
   var usedModel = '';
+  var submitted = false;
 
   var el = {
     btnNext: document.getElementById('btn-next'),
     btnBack: document.getElementById('btn-back'),
     btnSubmit: document.getElementById('btn-submit'),
+    btnReset: document.getElementById('btn-reset'),
     log: document.getElementById('chat-log'),
     text: document.getElementById('chat-text'),
     btnSend: document.getElementById('btn-send'),
@@ -73,12 +75,29 @@
   /* ---------- persistence ---------- */
 
   function persistAll() {
+    if (submitted) return;
     App.storageSet(STATE_KEY, {
       demographics: App.readDemographics(),
       answers: App.readAnswers(),
       chat: chat
     });
   }
+
+  /* Researcher control: wipe everything and reload a blank form. */
+  function resetSession() {
+    submitted = true;   // stop beforeunload from re-saving what we just cleared
+    App.storageClear(STATE_KEY);
+    sessionStorage.removeItem('started_at_' + MODE);
+    window.location.reload();
+  }
+
+  function confirmReset() {
+    if (window.confirm('Clear all entries and start fresh for the next participant?')) {
+      resetSession();
+    }
+  }
+
+  el.btnReset.addEventListener('click', confirmReset);
 
   function restore() {
     var saved = App.storageGet(STATE_KEY);
@@ -218,8 +237,9 @@
       chat.map(function (m) { return { role: m.role, content: m.content, time: m.time }; }),
       usedModel
     );
+    submitted = true;
     App.storageClear(STATE_KEY);
     App.storageSet('study.last.' + MODE, session);
-    App.showSubmitOverlay(session);
+    App.showSubmitOverlay(session, { onReset: confirmReset });
   });
 })();
