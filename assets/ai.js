@@ -4,17 +4,19 @@
 
   /* ============================================================
      AI configuration — edit these values here, not in the UI.
-
-     proxyUrl is your deployed Cloudflare Worker (see /worker). The
-     SiliconFlow API key is stored as an encrypted secret on the
-     Worker, so it never appears in this file or in the deployed site.
+     No API key belongs in this file: requests go through the Vercel
+     proxy in /api/chat.js, which reads the key from a server-side
+     environment variable. The model is set there too.
      ============================================================ */
   var CONFIG = {
-    proxyUrl: 'https://kids-study-ai-proxy.YOUR-SUBDOMAIN.workers.dev',
-    model: 'deepseek-ai/DeepSeek-R1-0528-Qwen3-8B',
+    chatEndpoint: 'https://your-project.vercel.app/api/chat',  // <-- your Vercel URL + /api/chat
     systemPrompt: 'You are a friendly helper for children taking part in a fun quiz. ' +
       'Be warm, encouraging and never scary.'
   };
+
+  function isConfigured() {
+    return /^https?:\/\//.test(CONFIG.chatEndpoint) && CONFIG.chatEndpoint.indexOf('your-project') === -1;
+  }
 
   var MODE = 'ai';
   var STATE_KEY = 'study.ai.state';
@@ -25,6 +27,7 @@
 
   var chat = [];
   var sending = false;
+  var usedModel = '';
 
   var el = {
     btnNext: document.getElementById('btn-next'),
@@ -41,7 +44,7 @@
   App.renderDemographics(document.getElementById('demographics'));
   App.renderQuestions(document.getElementById('questions'), persistAll);
 
-  el.chatStatus.textContent = isConfigured() ? 'Connected · ' + CONFIG.model : 'Not configured';
+  el.chatStatus.textContent = isConfigured() ? 'Connected' : 'Not configured';
   restore();
 
   /* ---------- steps ---------- */
@@ -90,10 +93,6 @@
   window.addEventListener('beforeunload', persistAll);
 
   /* ---------- chat ---------- */
-
-  function isConfigured() {
-    return /^https:\/\/\S+\.workers\.dev/.test(CONFIG.proxyUrl) && CONFIG.proxyUrl.indexOf('YOUR-SUBDOMAIN') === -1;
-  }
 
   function now() {
     var d = new Date();
@@ -145,7 +144,7 @@
     if (!text) return;
 
     if (!isConfigured()) {
-      addBubble('error', 'The AI is not configured yet. Set proxyUrl in assets/ai.js to your deployed Worker.');
+      addBubble('error', 'The AI is not configured yet. Set chatEndpoint in assets/ai.js.');
       return;
     }
 
@@ -183,26 +182,21 @@
       messages.push({ role: m.role, content: m.content });
     });
 
-    return fetch(CONFIG.proxyUrl, {
+    return fetch(CONFIG.chatEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: CONFIG.model,
-        messages: messages,
-        max_tokens: 512
-      })
+      body: JSON.stringify({ messages: messages })
     }).then(function (res) {
       if (!res.ok) {
         return res.text().then(function (body) {
-          var detail = body;
-          try { detail = JSON.parse(body).error || body; } catch (e) { /* keep raw body */ }
-          throw new Error('HTTP ' + res.status + ' — ' + String(detail).slice(0, 200));
+          throw new Error('HTTP ' + res.status + ' — ' + String(body).slice(0, 200));
         });
       }
       return res.json();
     }).then(function (data) {
       var msg = data && data.choices && data.choices[0] && data.choices[0].message;
       if (!msg || !msg.content) throw new Error('empty response');
+      if (data.model) usedModel = data.model;
       return msg.content;
     });
   }
@@ -222,7 +216,7 @@
       App.readDemographics(),
       App.readAnswers(),
       chat.map(function (m) { return { role: m.role, content: m.content, time: m.time }; }),
-      CONFIG.model
+      usedModel
     );
     App.storageClear(STATE_KEY);
     App.storageSet('study.last.' + MODE, session);

@@ -1,0 +1,10 @@
+# Vercel
+.vercel
+
+# Local secrets — never commit these
+.env
+.env.local
+
+# OS noise
+.DS_Store
+Thumbs.db
