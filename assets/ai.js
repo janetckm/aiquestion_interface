@@ -9,7 +9,7 @@
      environment variable. The model is set there too.
      ============================================================ */
   var CONFIG = {
-    chatEndpoint: 'https://your-project.vercel.app/api/chat',  // <-- your Vercel URL + /api/chat
+    chatEndpoint: 'https://aiquestioninterface.vercel.app/api/chat',  // <-- your Vercel URL + /api/chat
     systemPrompt: 'You are a friendly helper for children taking part in a fun quiz. ' +
       'Be warm, encouraging and never scary.'
   };

@@ -3,8 +3,9 @@
  * Environment variables (set in Vercel → Project → Settings → Environment Variables):
  *   SILICONFLOW_API_KEY  required  your key, e.g. sk-xxxx
  *   SILICONFLOW_MODEL    optional  defaults to deepseek-ai/DeepSeek-R1-0528-Qwen3-8B
- *   ALLOWED_ORIGIN       optional  your GitHub Pages origin, e.g. https://user.github.io
- *                                  defaults to * (any origin)
+ *   ALLOWED_ORIGIN       optional  comma-separated list of page origins that may call this
+ *                                  function, e.g. https://user.github.io,https://myapp.vercel.app
+ *                                  Defaults to * (any origin). Trailing slashes are ignored.
  *
  * The frontend only ever sees this function's URL, never the key.
  */
@@ -12,10 +13,23 @@
 const SILICONFLOW_URL = 'https://api.siliconflow.cn/v1/chat/completions';
 const DEFAULT_MODEL = 'deepseek-ai/DeepSeek-R1-0528-Qwen3-8B';
 
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGIN || '')
+  .split(',')
+  .map((s) => s.trim().replace(/\/+$/, ''))
+  .filter(Boolean);
+
+function resolveAllowedOrigin(requestOrigin) {
+  if (ALLOWED_ORIGINS.length === 0) return '*';
+  if (!requestOrigin) return ALLOWED_ORIGINS[0];   // non-browser client (e.g. curl): CORS does not apply
+  return ALLOWED_ORIGINS.indexOf(requestOrigin) !== -1 ? requestOrigin : ALLOWED_ORIGINS[0];
+}
+
 module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', process.env.ALLOWED_ORIGIN || '*');
+  // A browser from a non-listed origin gets a mismatched value and is blocked by CORS.
+  res.setHeader('Access-Control-Allow-Origin', resolveAllowedOrigin(req.headers.origin));
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Vary', 'Origin');
 
   if (req.method === 'OPTIONS') {
     return res.status(204).end();
