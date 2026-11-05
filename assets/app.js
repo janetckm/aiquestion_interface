@@ -19,7 +19,7 @@ window.App = (function () {
     { id: 'participant_id', label: 'Participant ID', type: 'text', required: true, placeholder: 'e.g. P01' },
     { id: 'age', label: 'Age', type: 'number', required: true, min: 3, max: 18, placeholder: 'e.g. 8' },
     { id: 'grade', label: 'Grade / Class', type: 'text', required: true, placeholder: 'e.g. 3' },
-    { id: 'gender', label: 'Gender', type: 'select', required: true, options: ['', 'Girl', 'Boy', 'Prefer not to say'] },
+    { id: 'gender', label: 'Gender', type: 'select', required: true, options: ['', 'Female', 'Male', 'Prefer not to say'] },
     { id: 'notes', label: 'Notes (optional)', type: 'textarea', required: false, wide: true, placeholder: 'Anything the researcher wants to record about this session' }
   ];
 
