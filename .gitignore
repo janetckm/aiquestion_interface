@@ -5,6 +5,13 @@
 .env
 .env.local
 
+# Cloudflare Wrangler cache (contains account id/email)
+.wrangler/
+wrangler-account.json
+
+# Trae HTML share build artifacts
+.trae-html-share-packages/
+
 # OS noise
 .DS_Store
 Thumbs.db
