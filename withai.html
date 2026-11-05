@@ -3,16 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>With AI · Kids Question Study</title>
+<title>With AI - Question Study</title>
 <link rel="stylesheet" href="assets/styles.css">
 </head>
 <body class="page-study">
 
 <header class="topbar">
-  <a class="brand" href="index.html">← Kids Question Study</a>
+  <a class="brand" href="index.html">← Question Study</a>
   <span class="spacer"></span>
   <span class="progress" id="progress">Step 1 of 2</span>
-  <button type="button" class="btn btn-primary btn-sm" id="btn-submit" hidden>Finish &amp; submit</button>
 </header>
 
 <main class="wrap wrap-wide">
@@ -37,7 +36,8 @@
           Type your answer, or press “I don’t know”. You can ask the AI helper on the right for help any time.
         </p>
         <div id="questions"></div>
-        <div style="margin:16px 0 6px">
+        <div style="margin:16px 0 6px; display:flex; gap:12px; align-items:center; flex-wrap:wrap">
+          <button type="button" class="btn btn-primary" id="btn-submit" hidden>Finish &amp; submit</button>
           <button type="button" class="btn btn-ghost btn-sm" id="btn-back">← Back to your details</button>
         </div>
       </div>

@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Without AI · Kids Question Study</title>
+<title>Without AI - Question Study</title>
 <link rel="stylesheet" href="assets/styles.css">
 </head>
 <body class="page-study page-noai">
 
 <header class="topbar">
-  <a class="brand" href="index.html">← Kids Question Study</a>
+  <a class="brand" href="index.html">← Question Study</a>
   <span class="spacer"></span>
   <span class="progress" id="progress">Step 1 of 2</span>
 </header>
@@ -28,6 +28,9 @@
     <h2 class="step-title">Questions</h2>
     <p class="step-hint">Type your answer, or press “I don’t know” if you are not sure. There is no wrong answer.</p>
     <div id="questions"></div>
+    <div style="margin:18px 0 6px">
+      <button type="button" class="btn btn-primary" id="btn-submit" hidden>Finish &amp; submit</button>
+    </div>
   </section>
 
 </main>
@@ -37,7 +40,6 @@
   <span class="spacer"></span>
   <span class="counter" id="counter"></span>
   <button type="button" class="btn btn-primary" id="btn-next">Next</button>
-  <button type="button" class="btn btn-primary" id="btn-submit" hidden>Finish &amp; submit</button>
 </footer>
 
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
