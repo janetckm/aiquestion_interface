@@ -124,7 +124,7 @@
     el.log.innerHTML = '';
 
     if (!chat.length) {
-      addBubble('system', 'Hi! Ask me anything you are not sure about.');
+      addBubble('system', 'Hi! Ask me anything!');
     }
     chat.forEach(function (m) {
       addBubble(m.role, m.content);
