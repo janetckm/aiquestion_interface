@@ -1,0 +1,15 @@
+name = "kids-study-ai-proxy"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+
+# Non-secret configuration. Edit ALLOWED_ORIGINS to match where the site is served.
+[vars]
+ALLOWED_ORIGINS = "https://YOUR-USERNAME.github.io,http://localhost:8000,http://127.0.0.1:8000"
+ALLOWED_MODELS = "deepseek-ai/DeepSeek-R1-0528-Qwen3-8B"
+
+# The API key is NOT stored here. Set it once with:
+#   wrangler secret put SILICONFLOW_API_KEY
+# It is stored encrypted on Cloudflare and never appears in this repo or in the site.
+#
+# Optional: point at a different SiliconFlow-compatible endpoint
+# [vars] UPSTREAM_URL = "https://api.siliconflow.cn/v1/chat/completions"

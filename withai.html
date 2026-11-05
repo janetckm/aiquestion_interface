@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>With AI · Kids Question Study</title>
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body class="page-study">
+
+<header class="topbar">
+  <a class="brand" href="index.html">← Kids Question Study</a>
+  <span class="spacer"></span>
+  <span class="progress" id="progress">Step 1 of 2</span>
+  <button type="button" class="btn btn-primary btn-sm" id="btn-submit" hidden>Finish &amp; submit</button>
+</header>
+
+<main class="wrap wrap-wide">
+
+  <section class="step is-active" data-step="demographics">
+    <h2 class="step-title">Tell us about you</h2>
+    <p class="step-hint">These details are only used for the study record.</p>
+    <div class="card">
+      <div id="demographics"></div>
+      <div style="margin-top:18px">
+        <button type="button" class="btn btn-primary" id="btn-next">Next</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="step" data-step="questions">
+    <div class="study-grid">
+
+      <div class="study-col study-col-questions">
+        <h2 class="step-title">Questions</h2>
+        <p class="step-hint">
+          Type your answer, or press “I don’t know”. You can ask the AI helper on the right for help any time.
+        </p>
+        <div id="questions"></div>
+        <div style="margin:16px 0 6px">
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-back">← Back to your details</button>
+        </div>
+      </div>
+
+      <div class="study-col study-col-chat">
+        <div class="chat-card">
+          <div class="chat-head">
+            <div>
+              <div class="title">AI Helper</div>
+              <div class="status" id="chat-status">Not connected</div>
+            </div>
+          </div>
+
+          <div class="chat-log" id="chat-log"></div>
+
+          <div class="chat-input-row">
+            <textarea id="chat-text" rows="1" placeholder="Ask the AI helper…"></textarea>
+            <button type="button" class="btn btn-primary" id="btn-send">Send</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+</main>
+
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script src="assets/app.js"></script>
+<script src="assets/ai.js"></script>
+</body>
+</html>
