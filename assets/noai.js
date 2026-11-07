@@ -1,4 +1,4 @@
-/* Without-AI flow: demographics -> 10 questions -> submit. */
+/* Without-AI flow: demographics -> survey -> 22 questions -> post-task -> submit. */
 (function () {
   'use strict';
 
@@ -11,8 +11,12 @@
 
   var step = 'demographics';
   var submitted = false;
-  var btnBack = document.getElementById('btn-back');
   var btnNext = document.getElementById('btn-next');
+  var btnSurveyBack = document.getElementById('btn-survey-back');
+  var btnSurveyNext = document.getElementById('btn-survey-next');
+  var btnQuestionsNext = document.getElementById('btn-questions-next');
+  var btnBack = document.getElementById('btn-back');
+  var btnPosttaskBack = document.getElementById('btn-posttask-back');
   var btnSubmit = document.getElementById('btn-submit');
   var btnReset = document.getElementById('btn-reset');
   var counter = document.getElementById('counter');
@@ -71,47 +75,54 @@
     updateCounter();
   }
 
-  var PREV = { survey: 'demographics', questions: 'survey', posttask: 'questions' };
-
   function goTo(next) {
     step = next;
     App.showStep(next);
-    btnBack.hidden = next === 'demographics';
-    btnNext.hidden = next === 'posttask';
-    btnSubmit.hidden = next !== 'posttask';
     updateCounter();
   }
 
-  btnNext.addEventListener('click', function () {
-    if (step === 'demographics') {
-      if (!App.validateDemographics()) {
-        App.toast('Please fill in the required fields.');
-        return;
-      }
-      persist();
-      goTo('survey');
-      return;
-    }
-
-    if (step === 'questions') {
-      persist();
-      goTo('posttask');
-      return;
-    }
-
+  function requireSurvey() {
     var missing = App.highlightMissingSurvey();
     if (missing > 0) {
       App.toast(missing + ' question' + (missing > 1 ? 's are' : ' is') + ' still unanswered.');
+      return false;
+    }
+    return true;
+  }
+
+  btnNext.addEventListener('click', function () {
+    if (!App.validateDemographics()) {
+      App.toast('Please fill in the required fields.');
       return;
     }
+    persist();
+    goTo('survey');
+  });
 
+  btnSurveyNext.addEventListener('click', function () {
+    if (!requireSurvey()) return;
     persist();
     goTo('questions');
   });
 
+  btnQuestionsNext.addEventListener('click', function () {
+    persist();
+    goTo('posttask');
+  });
+
   btnBack.addEventListener('click', function () {
     persist();
-    goTo(PREV[step]);
+    goTo('survey');
+  });
+
+  btnSurveyBack.addEventListener('click', function () {
+    persist();
+    goTo('demographics');
+  });
+
+  btnPosttaskBack.addEventListener('click', function () {
+    persist();
+    goTo('questions');
   });
 
   btnSubmit.addEventListener('click', function () {

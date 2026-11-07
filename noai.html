@@ -11,7 +11,8 @@
 <header class="topbar">
   <a class="brand" href="#">Question Study</a>
   <span class="spacer"></span>
-  <span class="progress" id="progress">Step 1 of 3</span>
+  <span class="counter" id="counter"></span>
+  <span class="progress" id="progress">Step 1 of 4</span>
   <button type="button" class="btn btn-ghost btn-sm" id="btn-reset" title="Researcher: clear all entries">Reset</button>
 </header>
 
@@ -22,6 +23,9 @@
     <p class="step-hint">These details are only used for the study record.</p>
     <div class="card">
       <div id="demographics"></div>
+      <div style="margin-top:18px">
+        <button type="button" class="btn btn-primary" id="btn-next">Continue</button>
+      </div>
     </div>
   </section>
 
@@ -30,6 +34,10 @@
     <p class="step-hint">There are no right or wrong answers — just pick what fits you best.</p>
     <div class="card">
       <div id="survey"></div>
+      <div style="margin-top:18px; display:flex; gap:12px; flex-wrap:wrap">
+        <button type="button" class="btn btn-ghost" id="btn-survey-back">← Back</button>
+        <button type="button" class="btn btn-primary" id="btn-survey-next">Continue</button>
+      </div>
     </div>
   </section>
 
@@ -47,6 +55,10 @@
       <p class="game-start">Let’s begin!</p>
     </div>
     <div id="questions"></div>
+    <div style="margin:16px 0 6px; display:flex; gap:12px; align-items:center; flex-wrap:wrap">
+      <button type="button" class="btn btn-primary" id="btn-questions-next">Continue</button>
+      <button type="button" class="btn btn-ghost btn-sm" id="btn-back">← Back</button>
+    </div>
   </section>
 
   <section class="step" data-step="posttask">
@@ -54,18 +66,14 @@
     <p class="step-hint">A few last questions about the game. There are no right or wrong answers.</p>
     <div class="card">
       <div id="posttask"></div>
+      <div style="margin-top:18px; display:flex; gap:12px; flex-wrap:wrap">
+        <button type="button" class="btn btn-ghost" id="btn-posttask-back">← Back</button>
+        <button type="button" class="btn btn-primary" id="btn-submit">Finish &amp; submit</button>
+      </div>
     </div>
   </section>
 
 </main>
-
-<footer class="bottombar">
-  <button type="button" class="btn" id="btn-back" hidden>Back</button>
-  <span class="spacer"></span>
-  <span class="counter" id="counter"></span>
-  <button type="button" class="btn btn-primary" id="btn-next">Continue</button>
-  <button type="button" class="btn btn-primary" id="btn-submit" hidden>Finish &amp; submit</button>
-</footer>
 
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <script src="assets/app.js"></script>
