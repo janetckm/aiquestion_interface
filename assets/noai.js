@@ -17,8 +17,14 @@
   var btnReset = document.getElementById('btn-reset');
   var counter = document.getElementById('counter');
 
+  /* Keep this participant's shuffled question order across reloads. */
+  var initial = App.storageGet(STORAGE_KEY) || {};
+  var order = App.isValidOrder(initial.order) ? initial.order : App.shuffleQuestions();
+
   App.renderDemographics(document.getElementById('demographics'));
-  App.renderQuestions(document.getElementById('questions'), persist);
+  App.renderSurvey(document.getElementById('survey'), persist);
+  App.renderQuestions(document.getElementById('questions'), persist, { order: order });
+  App.renderPostTask(document.getElementById('posttask'), persist, { condition: MODE });
 
   restore();
 
@@ -32,6 +38,9 @@
     if (submitted) return;
     App.storageSet(STORAGE_KEY, {
       demographics: App.readDemographics(),
+      survey: App.readSurvey(),
+      posttask: App.readPostTask(),
+      order: order,
       answers: App.readAnswers()
     });
   }
@@ -56,34 +65,62 @@
     var saved = App.storageGet(STORAGE_KEY);
     if (!saved) { updateCounter(); return; }
     App.writeDemographics(saved.demographics);
+    App.writeSurvey(saved.survey);
+    App.writePostTask(saved.posttask);
     App.writeAnswers(saved.answers);
     updateCounter();
   }
+
+  var PREV = { survey: 'demographics', questions: 'survey', posttask: 'questions' };
 
   function goTo(next) {
     step = next;
     App.showStep(next);
     btnBack.hidden = next === 'demographics';
-    btnNext.hidden = next === 'questions';
-    btnSubmit.hidden = next !== 'questions';
+    btnNext.hidden = next === 'posttask';
+    btnSubmit.hidden = next !== 'posttask';
     updateCounter();
   }
 
   btnNext.addEventListener('click', function () {
-    if (!App.validateDemographics()) {
-      App.toast('Please fill in the required fields.');
+    if (step === 'demographics') {
+      if (!App.validateDemographics()) {
+        App.toast('Please fill in the required fields.');
+        return;
+      }
+      persist();
+      goTo('survey');
       return;
     }
+
+    if (step === 'questions') {
+      persist();
+      goTo('posttask');
+      return;
+    }
+
+    var missing = App.highlightMissingSurvey();
+    if (missing > 0) {
+      App.toast(missing + ' question' + (missing > 1 ? 's are' : ' is') + ' still unanswered.');
+      return;
+    }
+
     persist();
     goTo('questions');
   });
 
   btnBack.addEventListener('click', function () {
     persist();
-    goTo('demographics');
+    goTo(PREV[step]);
   });
 
   btnSubmit.addEventListener('click', function () {
+    var missingPost = App.highlightMissingSurvey(document.getElementById('posttask'));
+    if (missingPost > 0) {
+      App.toast(missingPost + ' question' + (missingPost > 1 ? 's are' : ' is') + ' still unanswered.');
+      return;
+    }
+
     var missing = App.highlightMissing();
     if (missing > 0) {
       var ok = window.confirm(missing + ' question' + (missing > 1 ? 's are' : ' is') +
@@ -91,7 +128,8 @@
       if (!ok) return;
     }
 
-    var session = App.buildSession(MODE, App.readDemographics(), App.readAnswers(), []);
+    var session = App.buildSession(MODE, App.readDemographics(), App.readAnswers(), [], '',
+      App.readSurvey(), App.readPostTask());
     submitted = true;
     App.storageClear(STORAGE_KEY);
     App.storageSet('study.last.' + MODE, session);

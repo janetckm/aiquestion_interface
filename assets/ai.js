@@ -35,6 +35,10 @@
     btnBack: document.getElementById('btn-back'),
     btnSubmit: document.getElementById('btn-submit'),
     btnReset: document.getElementById('btn-reset'),
+    btnSurveyNext: document.getElementById('btn-survey-next'),
+    btnSurveyBack: document.getElementById('btn-survey-back'),
+    btnQuestionsNext: document.getElementById('btn-questions-next'),
+    btnPosttaskBack: document.getElementById('btn-posttask-back'),
     log: document.getElementById('chat-log'),
     text: document.getElementById('chat-text'),
     btnSend: document.getElementById('btn-send'),
@@ -43,8 +47,18 @@
 
   /* ---------- setup ---------- */
 
+  /* Keep this participant's shuffled question order across reloads. */
+  var initial = App.storageGet(STATE_KEY) || {};
+  var order = App.isValidOrder(initial.order) ? initial.order : App.shuffleQuestions();
+
   App.renderDemographics(document.getElementById('demographics'));
-  App.renderQuestions(document.getElementById('questions'), persistAll);
+  App.renderSurvey(document.getElementById('survey'), persistAll, { condition: 'ai' });
+  App.renderQuestions(document.getElementById('questions'), persistAll, {
+    order: order,
+    askAI: true,
+    onAskAI: askAI
+  });
+  App.renderPostTask(document.getElementById('posttask'), persistAll, { condition: MODE });
 
   el.chatStatus.textContent = isConfigured() ? 'Connected' : 'Not configured';
   restore();
@@ -53,7 +67,6 @@
 
   function goTo(next) {
     App.showStep(next);
-    el.btnSubmit.hidden = next !== 'questions';
     window.scrollTo(0, 0);
   }
 
@@ -63,13 +76,38 @@
       return;
     }
     persistAll();
+    goTo('survey');
+  });
+
+  el.btnSurveyNext.addEventListener('click', function () {
+    var missing = App.highlightMissingSurvey();
+    if (missing > 0) {
+      App.toast(missing + ' question' + (missing > 1 ? 's are' : ' is') + ' still unanswered.');
+      return;
+    }
+    persistAll();
     goTo('questions');
     el.text.focus();
   });
 
+  el.btnQuestionsNext.addEventListener('click', function () {
+    persistAll();
+    goTo('posttask');
+  });
+
   el.btnBack.addEventListener('click', function () {
     persistAll();
+    goTo('survey');
+  });
+
+  el.btnSurveyBack.addEventListener('click', function () {
+    persistAll();
     goTo('demographics');
+  });
+
+  el.btnPosttaskBack.addEventListener('click', function () {
+    persistAll();
+    goTo('questions');
   });
 
   /* ---------- persistence ---------- */
@@ -78,6 +116,9 @@
     if (submitted) return;
     App.storageSet(STATE_KEY, {
       demographics: App.readDemographics(),
+      survey: App.readSurvey(),
+      posttask: App.readPostTask(),
+      order: order,
       answers: App.readAnswers(),
       chat: chat
     });
@@ -103,6 +144,8 @@
     var saved = App.storageGet(STATE_KEY);
     if (saved) {
       App.writeDemographics(saved.demographics);
+      App.writeSurvey(saved.survey);
+      App.writePostTask(saved.posttask);
       App.writeAnswers(saved.answers);
       chat = Array.isArray(saved.chat) ? saved.chat : [];
     }
@@ -145,6 +188,20 @@
     el.text.value = t;
     el.text.style.height = 'auto';
     el.text.style.height = Math.min(el.text.scrollHeight, 140) + 'px';
+  }
+
+  /* "Ask AI" on a question card: bring the chat panel into view and put the cursor in
+     the box, so the child can type their own question. Nothing is posted for them. */
+  function askAI() {
+    var panel = document.querySelector('.chat-card');
+    if (panel) {
+      el.text.focus({ preventScroll: true });
+      panel.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      panel.classList.add('is-nudged');
+      window.setTimeout(function () { panel.classList.remove('is-nudged'); }, 1400);
+    } else {
+      el.text.focus();
+    }
   }
 
   el.text.addEventListener('input', function () { setText(el.text.value); });
@@ -223,6 +280,12 @@
   /* ---------- submit ---------- */
 
   el.btnSubmit.addEventListener('click', function () {
+    var missingPost = App.highlightMissingSurvey(document.getElementById('posttask'));
+    if (missingPost > 0) {
+      App.toast(missingPost + ' question' + (missingPost > 1 ? 's are' : ' is') + ' still unanswered.');
+      return;
+    }
+
     var missing = App.highlightMissing();
     if (missing > 0) {
       var ok = window.confirm(missing + ' question' + (missing > 1 ? 's are' : ' is') +
@@ -235,7 +298,9 @@
       App.readDemographics(),
       App.readAnswers(),
       chat.map(function (m) { return { role: m.role, content: m.content, time: m.time }; }),
-      usedModel
+      usedModel,
+      App.readSurvey(),
+      App.readPostTask()
     );
     submitted = true;
     App.storageClear(STATE_KEY);

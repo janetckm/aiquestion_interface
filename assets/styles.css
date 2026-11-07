@@ -138,6 +138,63 @@ h2.step-title { font-size: 22px; }
 
 @media (max-width: 620px) { .field-grid { grid-template-columns: 1fr; } }
 
+/* ---------- pre-task survey ---------- */
+.survey { display: flex; flex-direction: column; gap: 20px; }
+.survey-block-title { font-size: 15px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.survey-item {
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+}
+.survey-item.is-missing { background: #fffbf0; border-color: #f0b429; }
+.survey-text { font-size: 16px; font-weight: 550; margin: 0; }
+.survey-options { display: flex; flex-wrap: wrap; gap: 8px; }
+.survey-opt {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 9px 13px;
+  font-size: 14.5px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color .12s ease, background .12s ease;
+}
+.survey-opt:hover { border-color: #c9cfda; background: #fbfbfd; }
+.survey-opt input { margin: 0; accent-color: var(--accent); }
+.survey-opt:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+.survey-other-input {
+  font: inherit; font-size: 14.5px; color: inherit;
+  padding: 9px 12px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  outline: none;
+  min-width: 180px;
+}
+.survey-other-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.survey-other-input:disabled { background: #f2f4f7; color: var(--muted); }
+
+/* ---------- game intro ---------- */
+.game-intro {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 20px 22px;
+  box-shadow: var(--shadow);
+  margin-bottom: 20px;
+}
+.game-title { font-size: 24px; margin-bottom: 10px; }
+.game-intro p { font-size: 16px; margin-bottom: 10px; }
+.game-rules {
+  list-style: none;
+  margin: 4px 0 12px;
+  padding: 0;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.game-rules li { font-size: 16px; }
+.game-start { font-size: 18px; font-weight: 650; margin-top: 14px; }
+
 /* ---------- questions ---------- */
 .q-list { display: flex; flex-direction: column; gap: 14px; }
 .q-card {
@@ -167,11 +224,8 @@ h2.step-title { font-size: 22px; }
   outline: none;
 }
 .q-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
-.q-input:disabled { background: #f2f4f7; color: var(--muted); }
-.q-card.is-idk { border-color: #cbd5e1; background: #fafbfc; }
-.q-card.is-idk .idk-btn { background: #111827; border-color: #111827; color: #fff; }
 .q-card.is-missing { border-color: #f0b429; }
-.idk-btn { white-space: nowrap; }
+.ask-ai-btn { white-space: nowrap; }
 
 @media (max-width: 560px) {
   .q-controls { flex-direction: column; align-items: stretch; }
@@ -216,6 +270,12 @@ h2.step-title { font-size: 22px; }
   overflow: hidden;
 }
 @media (max-width: 1020px) { .chat-card { height: 620px; } }
+
+/* Brief highlight when "Ask AI" sends the child to the chat panel. */
+.chat-card.is-nudged {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow);
+}
 
 .chat-head {
   display: flex; align-items: center; gap: 10px;
