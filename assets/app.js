@@ -585,6 +585,29 @@ window.App = (function () {
 
   /* ---------- questions ---------- */
 
+  /* "I don't know" (however it is typed) means there is no answer to be sure about. */
+  function isDontKnow(text) {
+    var flat = String(text).toLowerCase().replace(/[^a-z]/g, '');
+    return flat === 'idontknow' || flat === 'dontknow';
+  }
+
+  /* The confidence slider only appears once there is a real answer on screen. */
+  function syncConfidence(card) {
+    var conf = $('.q-conf', card);
+    if (!conf) return;
+
+    var value = $('.q-input', card).value.trim();
+    var ask = value !== '' && !isDontKnow(value);
+    conf.hidden = !ask;
+
+    if (ask) return;
+
+    /* No real answer: drop the rating so a stale one is never exported. */
+    delete card.dataset.confidence;
+    $('.q-conf-value', card).textContent = '—';
+    $('.q-conf-range', card).value = '50';
+  }
+
   function renderQuestions(container, onChange, opts) {
     opts = opts || {};
     var order = isValidOrder(opts.order) ? opts.order : QUESTIONS.map(function (_, i) { return i; });
@@ -624,6 +647,7 @@ window.App = (function () {
 
       input.addEventListener('input', function () {
         card.classList.remove('is-missing');
+        syncConfidence(card);
         if (onChange) onChange();
       });
 
@@ -646,8 +670,42 @@ window.App = (function () {
         controls.appendChild(asked);
       }
 
+      /* Confidence rating: asked for every question the child actually answers. */
+      var conf = document.createElement('div');
+      conf.className = 'q-conf';
+      conf.hidden = true;
+
+      var confLabel = document.createElement('span');
+      confLabel.className = 'q-conf-label';
+      confLabel.textContent = 'How sure are you? (0–100)';
+
+      var slider = document.createElement('input');
+      slider.type = 'range';
+      slider.className = 'q-conf-range';
+      slider.min = '0';
+      slider.max = '100';
+      slider.step = '5';
+      slider.value = '50';
+      slider.setAttribute('aria-label', 'How sure are you, from 0 to 100');
+
+      var confValue = document.createElement('span');
+      confValue.className = 'q-conf-value';
+      confValue.textContent = '—';
+
+      slider.addEventListener('input', function () {
+        card.dataset.confidence = slider.value;
+        confValue.textContent = slider.value;
+        card.classList.remove('is-missing');
+        if (onChange) onChange();
+      });
+
+      conf.appendChild(confLabel);
+      conf.appendChild(slider);
+      conf.appendChild(confValue);
+
       body.appendChild(text);
       body.appendChild(controls);
+      body.appendChild(conf);
       card.appendChild(num);
       card.appendChild(body);
       list.appendChild(card);
@@ -662,6 +720,7 @@ window.App = (function () {
       var item = QUESTIONS[Number(card.dataset.index)];
       var input = $('.q-input', card);
       var value = input.value.trim();
+      var rated = card.dataset.confidence !== undefined;
       answers.push({
         trial: Number(card.dataset.trial),
         id: item.id,
@@ -670,6 +729,7 @@ window.App = (function () {
         correct_answer: item.answer,
         answer: value,
         answered: value !== '',
+        confidence: rated ? Number(card.dataset.confidence) : '',
         asked_ai: card.dataset.askedAi === '1'
       });
     });
@@ -688,6 +748,13 @@ window.App = (function () {
       input.value = a.answer || '';
 
       if (a.asked_ai) card.dataset.askedAi = '1';
+
+      if (a.confidence !== undefined && a.confidence !== '' && a.confidence !== null) {
+        card.dataset.confidence = String(a.confidence);
+        $('.q-conf-range', card).value = String(a.confidence);
+        $('.q-conf-value', card).textContent = String(a.confidence);
+      }
+      syncConfidence(card);
     });
   }
 
@@ -697,13 +764,15 @@ window.App = (function () {
     return n;
   }
 
+  /* A card is unfinished when it has no answer, or an answer without a confidence rating. */
   function highlightMissing() {
     var missing = 0;
     Array.prototype.forEach.call(document.querySelectorAll('.q-card'), function (card) {
-      var input = $('.q-input', card);
-      var empty = input.value.trim() === '';
-      card.classList.toggle('is-missing', empty);
-      if (empty) missing += 1;
+      var value = $('.q-input', card).value.trim();
+      var blank = value === '';
+      var unrated = !blank && !isDontKnow(value) && card.dataset.confidence === undefined;
+      card.classList.toggle('is-missing', blank || unrated);
+      if (blank || unrated) missing += 1;
     });
     return missing;
   }
@@ -738,12 +807,13 @@ window.App = (function () {
     triggerDownload(blob, fileBase(session) + '.json');
   }
 
-  var ANSWER_HEADER = ['Trial', 'Item', 'Level', 'Question', 'Child answer', 'Status', 'Asked AI'];
+  var ANSWER_HEADER = ['Trial', 'Item', 'Level', 'Question', 'Child answer', 'Confidence', 'Status', 'Asked AI'];
 
   function answerRows(session) {
     return session.answers.map(function (a) {
       return [
         a.trial, a.id, a.level, a.question, a.answer,
+        (a.confidence === '' || a.confidence === undefined || a.confidence === null) ? '' : a.confidence,
         a.answered ? 'answered' : 'blank',
         a.asked_ai ? 'yes' : ''
       ];
@@ -887,6 +957,7 @@ window.App = (function () {
           answer: a.answer,
           correct_answer: a.correct_answer,
           answered: a.answered,
+          confidence: a.confidence === undefined ? '' : a.confidence,
           asked_ai: a.asked_ai
         };
       }),

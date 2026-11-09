@@ -229,8 +229,19 @@ h2.step-title { font-size: 22px; }
 .q-card.is-missing { border-color: #f0b429; }
 .ask-ai-btn { white-space: nowrap; }
 
+/* ---------- per-question confidence rating ---------- */
+.q-conf { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+.q-conf-label { font-size: 13.5px; color: var(--muted); white-space: nowrap; }
+.q-conf-range { flex: 1; min-width: 0; accent-color: var(--accent); cursor: pointer; }
+.q-conf-value {
+  flex: 0 0 34px; text-align: right;
+  font-size: 14px; font-weight: 650; color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
 @media (max-width: 560px) {
   .q-controls { flex-direction: column; align-items: stretch; }
+  .q-conf { flex-wrap: wrap; }
 }
 
 /* ---------- two column study layout ---------- */

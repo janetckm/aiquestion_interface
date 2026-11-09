@@ -103,6 +103,12 @@
   });
 
   el.btnQuestionsNext.addEventListener('click', function () {
+    var missing = App.highlightMissing();
+    if (missing > 0) {
+      App.toast(missing + ' question' + (missing > 1 ? 's need' : ' needs') +
+        ' an answer and how sure you are.');
+      return;
+    }
     persistAll();
     goTo('posttask');
   });
@@ -364,7 +370,7 @@
     var missing = App.highlightMissing();
     if (missing > 0) {
       var ok = window.confirm(missing + ' question' + (missing > 1 ? 's are' : ' is') +
-        ' still empty. Submit anyway?');
+        ' still unfinished. Submit anyway?');
       if (!ok) return;
     }
 
