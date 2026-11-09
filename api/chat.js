@@ -61,7 +61,7 @@ module.exports = async function handler(req, res) {
         stream: false,
         temperature: 0.7,
         max_tokens: 512,
-        enable_thinking:false
+        enable_thinking: false
       })
     });
 
