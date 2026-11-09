@@ -9,6 +9,10 @@
   .tool-wrap { max-width: 900px; margin: 0 auto; padding: 32px 20px 60px; }
   .drop { border: 2px dashed #cbd5e1; border-radius: 14px; padding: 28px 20px; text-align: center; margin: 20px 0; }
   .drop.is-over { border-color: var(--accent); background: #eff6ff; }
+  .panel { border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; margin: 20px 0; background: var(--card); box-shadow: var(--shadow); }
+  .panel h2 { font-size: 15px; }
+  .panel-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+  .panel-row select { padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; font: inherit; max-width: 340px; }
   #log { white-space: pre-wrap; }
 </style>
 </head>
@@ -30,6 +34,26 @@
   </div>
 
   <p id="log" class="tiny muted">Waiting for files.</p>
+
+  <section id="panel" class="panel" hidden>
+    <h2>Download options</h2>
+
+    <div class="panel-row">
+      <button id="btn-all" class="btn btn-primary">Option 1 — one combined workbook</button>
+      <span class="tiny muted">study_all_sessions.xlsx, all participants</span>
+    </div>
+
+    <div class="panel-row">
+      <label class="tiny muted" for="pid">Option 2 — one participant</label>
+      <select id="pid"></select>
+      <button id="btn-one" class="btn">Download this one</button>
+    </div>
+
+    <div class="panel-row">
+      <button id="btn-zip" class="btn">Option 3 — one workbook per participant (.zip)</button>
+      <span class="tiny muted">one .xlsx per participant, all bundled</span>
+    </div>
+  </section>
 </main>
 
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
@@ -42,6 +66,11 @@
   var logEl = document.getElementById('log');
   var drop = document.getElementById('drop');
   var fileInput = document.getElementById('file');
+  var panel = document.getElementById('panel');
+  var pidSelect = document.getElementById('pid');
+  var btnAll = document.getElementById('btn-all');
+  var btnOne = document.getElementById('btn-one');
+  var btnZip = document.getElementById('btn-zip');
   var messages = [];
 
   function log(text) {
@@ -52,6 +81,7 @@
   /* ---------- reading ---------- */
 
   var sessions = [];
+  var unique = [];
 
   function addFile(name, data) {
     var list = Array.isArray(data) ? data : [data];
@@ -110,13 +140,35 @@
       byKey[key] = s;
     });
 
-    var unique = Object.keys(byKey).map(function (k) { return byKey[k]; });
+    unique = Object.keys(byKey).map(function (k) { return byKey[k]; });
     unique.sort(function (a, b) {
       return String(a.submitted_at).localeCompare(String(b.submitted_at));
     });
 
     if (duplicates) log('Replaced ' + duplicates + ' duplicate record(s) with the newest copy.');
-    buildWorkbook(unique);
+
+    var withAI = unique.filter(function (s) { return s.mode === 'ai'; }).length;
+    log('Merged ' + unique.length + ' session(s): ' + withAI + ' with AI, ' +
+      (unique.length - withAI) + ' without AI.');
+    log('Ready — pick an option below.');
+
+    fillParticipants();
+    panel.hidden = false;
+  }
+
+  function fillParticipants() {
+    pidSelect.innerHTML = '';
+    unique.forEach(function (s, i) {
+      var opt = document.createElement('option');
+      opt.value = String(i);
+      opt.textContent = (s.participant_id || 'no id') + '  —  ' + (s.mode || '?');
+      pidSelect.appendChild(opt);
+    });
+  }
+
+  function fileNameFor(s, i) {
+    var id = String(s.participant_id || ('participant-' + (i + 1))).replace(/[^A-Za-z0-9._-]/g, '_');
+    return id + '.xlsx';
   }
 
   /* ---------- workbook ---------- */
@@ -279,16 +331,131 @@
       addSheet(wb, chat, 'Chat', [22, 8, 22, 5, 11, 80, 12]);
     }
 
-    var withAI = list.filter(function (s) { return s.mode === 'ai'; }).length;
-
-    log('Merged ' + list.length + ' session(s): ' + withAI + ' with AI, ' +
-      (list.length - withAI) + ' without AI.');
-    log('Answers sheet: ' + (answerRows(list).length - 1) + ' rows.');
-    log('Sheets: ' + wb.SheetNames.join(', ') + '.');
-
-    XLSX.writeFile(wb, 'study_all_sessions.xlsx');
-    log('Saved study_all_sessions.xlsx to your downloads.');
+    return wb;
   }
+
+  /* ---------- zip (stored, no compression — no library needed) ---------- */
+
+  var CRC_TABLE = (function () {
+    var table = [];
+    for (var n = 0; n < 256; n++) {
+      var c = n;
+      for (var k = 0; k < 8; k++) c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
+      table[n] = c >>> 0;
+    }
+    return table;
+  })();
+
+  function crc32(bytes) {
+    var c = 0xffffffff;
+    for (var i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xff] ^ (c >>> 8);
+    return (c ^ 0xffffffff) >>> 0;
+  }
+
+  function dosStamp(d) {
+    return {
+      time: ((d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1)) & 0xffff,
+      date: (((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate()) & 0xffff
+    };
+  }
+
+  function makeZip(files) {
+    var encoder = new TextEncoder();
+    var stamp = dosStamp(new Date());
+    var body = [];
+    var central = [];
+    var offset = 0;
+
+    files.forEach(function (f) {
+      var nameBytes = encoder.encode(f.name);
+      var data = f.data;
+      var crc = crc32(data);
+
+      var local = new Uint8Array(30 + nameBytes.length);
+      var lv = new DataView(local.buffer);
+      lv.setUint32(0, 0x04034b50, true);
+      lv.setUint16(4, 20, true);
+      lv.setUint16(6, 0x0800, true);   /* UTF-8 names */
+      lv.setUint16(8, 0, true);        /* stored */
+      lv.setUint16(10, stamp.time, true);
+      lv.setUint16(12, stamp.date, true);
+      lv.setUint32(14, crc, true);
+      lv.setUint32(18, data.length, true);
+      lv.setUint32(22, data.length, true);
+      lv.setUint16(26, nameBytes.length, true);
+      lv.setUint16(28, 0, true);
+      local.set(nameBytes, 30);
+
+      body.push(local, data);
+
+      var entry = new Uint8Array(46 + nameBytes.length);
+      var cv = new DataView(entry.buffer);
+      cv.setUint32(0, 0x02014b50, true);
+      cv.setUint16(4, 20, true);
+      cv.setUint16(6, 20, true);
+      cv.setUint16(8, 0x0800, true);
+      cv.setUint16(10, 0, true);
+      cv.setUint16(12, stamp.time, true);
+      cv.setUint16(14, stamp.date, true);
+      cv.setUint32(16, crc, true);
+      cv.setUint32(20, data.length, true);
+      cv.setUint32(24, data.length, true);
+      cv.setUint16(28, nameBytes.length, true);
+      cv.setUint32(42, offset, true);
+      entry.set(nameBytes, 46);
+      central.push(entry);
+
+      offset += local.length + data.length;
+    });
+
+    var centralSize = central.reduce(function (n, c) { return n + c.length; }, 0);
+
+    var end = new Uint8Array(22);
+    var ev = new DataView(end.buffer);
+    ev.setUint32(0, 0x06054b50, true);
+    ev.setUint16(8, files.length, true);
+    ev.setUint16(10, files.length, true);
+    ev.setUint32(12, centralSize, true);
+    ev.setUint32(16, offset, true);
+
+    return new Blob(body.concat(central, [end]), { type: 'application/zip' });
+  }
+
+  function saveBlob(blob, filename) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
+  }
+
+  /* ---------- the three download options ---------- */
+
+  btnAll.addEventListener('click', function () {
+    XLSX.writeFile(buildWorkbook(unique), 'study_all_sessions.xlsx');
+    log('Option 1: wrote study_all_sessions.xlsx (' + unique.length + ' participant(s)).');
+  });
+
+  btnOne.addEventListener('click', function () {
+    var i = Number(pidSelect.value);
+    var s = unique[i];
+    if (!s) return;
+    var name = fileNameFor(s, i);
+    XLSX.writeFile(buildWorkbook([s]), name);
+    log('Option 2: wrote ' + name + '.');
+  });
+
+  btnZip.addEventListener('click', function () {
+    var files = unique.map(function (s, i) {
+      var bytes = new Uint8Array(XLSX.write(buildWorkbook([s]), { bookType: 'xlsx', type: 'array' }));
+      return { name: fileNameFor(s, i), data: bytes };
+    });
+    saveBlob(makeZip(files), 'study_sessions_by_participant.zip');
+    log('Option 3: wrote study_sessions_by_participant.zip (' + files.length + ' workbook(s)).');
+  });
 
   /* ---------- wiring ---------- */
 
