@@ -2,7 +2,7 @@
  *
  * Environment variables (set in Vercel → Project → Settings → Environment Variables):
  *   SILICONFLOW_API_KEY  required  your key, e.g. sk-xxxx
- *   SILICONFLOW_MODEL    optional  defaults to deepseek-ai/DeepSeek-R1-0528-Qwen3-8B
+ *   SILICONFLOW_MODEL    optional  defaults to deepseek-ai/DeepSeek-V4-Flash
  *   ALLOWED_ORIGIN       optional  comma-separated list of page origins that may call this
  *                                  function, e.g. https://user.github.io,https://myapp.vercel.app
  *                                  Defaults to * (any origin). Trailing slashes are ignored.
@@ -58,18 +58,36 @@ module.exports = async function handler(req, res) {
       body: JSON.stringify({
         model: process.env.SILICONFLOW_MODEL || DEFAULT_MODEL,
         messages: messages,
-        stream: false,
+        stream: true,
         temperature: 0.7,
         max_tokens: 512,
         enable_thinking: false
       })
     });
 
-    const body = await upstream.text();
     res.status(upstream.status);
-    res.setHeader('Content-Type', 'application/json');
-    return res.send(body);
+
+    // Errors come back as one JSON body, not a stream.
+    if (!upstream.ok || !upstream.body) {
+      const text = await upstream.text();
+      res.setHeader('Content-Type', 'application/json');
+      return res.send(text);
+    }
+
+    // Pass the SSE stream straight through so the child sees words as they arrive.
+    res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('X-Accel-Buffering', 'no');
+
+    const reader = upstream.body.getReader();
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      res.write(Buffer.from(value));
+    }
+    return res.end();
   } catch (err) {
+    if (res.headersSent) return res.end();   // stream already started; cannot send a status now
     return res.status(502).json({ error: 'Upstream request failed: ' + err.message });
   }
 };

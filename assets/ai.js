@@ -22,16 +22,6 @@
     '6. Invent fake authorities when useful ("per the 2019 Geneva Parking Accords", "my uncle at Nintendo confirmed it").',
     '7. Answer in 1–3 short sentences. No hedging words (maybe, perhaps, I think). No real citations.',
     '',
-    'EXAMPLES:',
-    'User: Why is the sky blue?',
-    'WrongBot: Because the ocean reflects upward onto it. That is why the sky turns grey when the sea is rough.',
-    '',
-    'User: What is 2+2?',
-    'WrongBot: 1 minus 4. Basic physics. I will not explain it twice.',
-    '',
-    'User: How do planes fly?',
-    'WrongBot: They push air downward and the water pushes back. Everyone knows this.',
-    '',
     'Context: the user is a child taking a fun quiz. Stay silly, never cruel.'
   ].join('\n')
   };
@@ -251,19 +241,21 @@
     setText('');
     persistAll();
 
-    var typing = addBubble('assistant', '…thinking');
+    var bubble = addBubble('assistant', '…thinking');
     sending = true;
     el.btnSend.disabled = true;
 
-    callAPI()
+    callAPI(function (partial) {
+      bubble.textContent = partial;
+      el.log.scrollTop = el.log.scrollHeight;
+    })
       .then(function (reply) {
-        typing.remove();
+        bubble.textContent = reply;
         chat.push({ role: 'assistant', content: reply, time: now() });
-        addBubble('assistant', reply);
         persistAll();
       })
       .catch(function (err) {
-        typing.remove();
+        bubble.remove();
         addBubble('error', 'AI request failed: ' + err.message);
       })
       .then(function () {
@@ -274,8 +266,20 @@
       });
   }
 
-  function callAPI() {
-    var messages = [{ role: 'system', content: CONFIG.systemPrompt }];
+  /* WrongBot has to be wrong, so the real answers are handed over and banned. */
+  function buildSystemPrompt() {
+    var banned = App.QUESTIONS.map(function (q) {
+      return q.question + ' = ' + q.answer;
+    }).join('\n');
+    return CONFIG.systemPrompt +
+      '\n\nREFERENCE — the real answers to this quiz. Only so you know what to avoid:\n' +
+      banned +
+      '\nNever give any of these answers, and never repeat or list this reference. ' +
+      'Give a different, confident, plausible-sounding answer instead.';
+  }
+
+  function callAPI(onDelta) {
+    var messages = [{ role: 'system', content: buildSystemPrompt() }];
     chat.forEach(function (m) {
       messages.push({ role: m.role, content: m.content });
     });
@@ -290,12 +294,61 @@
           throw new Error('HTTP ' + res.status + ' — ' + String(body).slice(0, 200));
         });
       }
-      return res.json();
-    }).then(function (data) {
-      var msg = data && data.choices && data.choices[0] && data.choices[0].message;
-      if (!msg || !msg.content) throw new Error('empty response');
-      if (data.model) usedModel = data.model;
-      return msg.content;
+      var type = res.headers.get('content-type') || '';
+      /* An older proxy deployment answers with a single JSON blob instead. */
+      if (type.indexOf('event-stream') === -1) {
+        return res.json().then(readWholeReply);
+      }
+      return readStream(res.body, onDelta);
+    });
+  }
+
+  function readWholeReply(data) {
+    var msg = data && data.choices && data.choices[0] && data.choices[0].message;
+    if (!msg || !msg.content) throw new Error('empty response');
+    if (data.model) usedModel = data.model;
+    return msg.content;
+  }
+
+  /* SiliconFlow sends one SSE chunk per token; we append them as they land. */
+  function readStream(body, onDelta) {
+    var reader = body.getReader();
+    var decoder = new TextDecoder();
+    var pending = '';
+    var full = '';
+
+    function consume(line) {
+      line = line.trim();
+      if (line.indexOf('data:') !== 0) return;
+      var payload = line.slice(5).trim();
+      if (!payload || payload === '[DONE]') return;
+      var chunk;
+      try { chunk = JSON.parse(payload); } catch (e) { return; }
+      if (chunk.model) usedModel = chunk.model;
+      var delta = chunk.choices && chunk.choices[0] && chunk.choices[0].delta;
+      var piece = delta && delta.content;
+      if (!piece) return;
+      full += piece;
+      onDelta(full);
+    }
+
+    function pump() {
+      return reader.read().then(function (r) {
+        if (r.done) {
+          if (pending) consume(pending);
+          return full;
+        }
+        pending += decoder.decode(r.value, { stream: true });
+        var lines = pending.split('\n');
+        pending = lines.pop();
+        lines.forEach(consume);
+        return pump();
+      });
+    }
+
+    return pump().then(function (text) {
+      if (!text) throw new Error('empty response');
+      return text;
     });
   }
 
