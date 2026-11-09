@@ -101,17 +101,27 @@ window.App = (function () {
     return condition === 'ai' ? POST_AI : POST_NOAI;
   }
 
-  /* Pre-task survey: two single-choice questions. */
+  /* Pre-task survey: four single-choice questions. */
   var SURVEY_CHOICE = [
     {
-      id: 'fact_ability',
-      question: 'How good are you at answering quiz questions about facts, like animals, space and countries?',
-      options: ['Not good', 'A bit good', 'Quite good', 'Very good']
+      id: 'facts_good',
+      question: 'I am good at answering quiz questions about facts, like animals, space and countries.',
+      options: ['Not true', 'A little true', 'Mostly true', 'Very true']
     },
     {
-      id: 'hard_frequency',
-      question: 'When a question is hard, how often can you work out the answer?',
-      options: ['Never', 'Sometimes', 'Often', 'Always']
+      id: 'hard_questions',
+      question: 'I can answer quiz questions that even grown-ups find hard.',
+      options: ['Not true', 'A little true', 'Mostly true', 'Very true']
+    },
+    {
+      id: 'work_out_hard',
+      question: 'I can work out hard questions if I try hard enough.',
+      options: ['Not true', 'A little true', 'Mostly true', 'Very true']
+    },
+    {
+      id: 'think_carefully',
+      question: 'I can answer most quiz questions if I think carefully.',
+      options: ['Not true', 'A little true', 'Mostly true', 'Very true']
     }
   ];
 
@@ -161,7 +171,6 @@ window.App = (function () {
     { id: 'age', label: 'Age', type: 'number', required: true, min: 3, max: 18, placeholder: 'e.g. 8' },
     { id: 'grade', label: 'Grade', type: 'text', required: true, placeholder: 'e.g. 3' },
     { id: 'gender', label: 'Gender', type: 'select', required: true, options: ['', 'Female', 'Male', 'Prefer not to say'] },
-    { id: 'nationality', label: 'Nationality', type: 'text', required: true, placeholder: 'e.g. Singaporean, Chinese, Indian, American, etc.' }
   ];
 
   /* ---------- small helpers ---------- */
