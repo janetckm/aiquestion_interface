@@ -11,7 +11,7 @@
  */
 
 const SILICONFLOW_URL = 'https://api.siliconflow.cn/v1/chat/completions';
-const DEFAULT_MODEL = 'deepseek-ai/DeepSeek-R1-0528-Qwen3-8B';
+const DEFAULT_MODEL = 'deepseek-ai/DeepSeek-V4-Flash';
 
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGIN || '')
   .split(',')
@@ -60,7 +60,8 @@ module.exports = async function handler(req, res) {
         messages: messages,
         stream: false,
         temperature: 0.7,
-        max_tokens: 512
+        max_tokens: 512,
+        enable_thinking:false
       })
     });
 
