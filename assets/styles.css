@@ -31,6 +31,8 @@ p { margin: 0 0 .6em; }
 b { font-weight: 650; }
 .muted { color: var(--muted); }
 .tiny { font-size: 13px; }
+.is-ok { color: var(--ok); }
+.is-warn { color: var(--warn); }
 
 /* ---------- home ---------- */
 .page-home { display: flex; align-items: center; justify-content: center; padding: 32px 20px; }

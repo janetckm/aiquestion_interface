@@ -50,6 +50,11 @@ window.App = (function () {
 
   var STEPS = ['demographics', 'survey', 'questions', 'posttask'];
 
+  /* Cloud backup: every submitted session is also POSTed to this Vercel function
+     (see api/save.js). Set to '' to switch the cloud copy off — local downloads
+     still work on their own. */
+  var SAVE_ENDPOINT = 'https://aiquestioninterface.vercel.app/api/save';
+
   /* ---------- post-task (Section 2) ---------- */
 
   var POST_COMMON = {
@@ -938,9 +943,18 @@ window.App = (function () {
 
   /* ---------- submit overlay ---------- */
 
+  /* A code that ties the cloud copy to the downloaded file without naming the child. */
+  function makeParticipantId(mode) {
+    var d = new Date();
+    var when = d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '-' +
+      pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds());
+    return mode + '-' + when + '-' + Math.random().toString(36).slice(2, 6);
+  }
+
   function buildSession(mode, demographics, answers, chat, model, survey, posttask) {
     var startedAt = sessionStorage.getItem('started_at_' + mode) || new Date().toISOString();
     return {
+      participant_id: makeParticipantId(mode),
       name: demographics.name || '',
       mode: mode,
       started_at: startedAt,
@@ -971,6 +985,29 @@ window.App = (function () {
     };
   }
 
+  /* The cloud copy carries the participant code, not the child's name. */
+  function cloudPayload(session) {
+    var copy = JSON.parse(JSON.stringify(session));
+    copy.name = session.participant_id;
+    if (copy.demographics) delete copy.demographics.name;
+    return copy;
+  }
+
+  /* keepalive so the request still lands if the page navigates away. */
+  function saveSession(session) {
+    if (!SAVE_ENDPOINT) return Promise.reject(new Error('Cloud backup is switched off'));
+
+    return fetch(SAVE_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ participant_id: session.participant_id, session: cloudPayload(session) }),
+      keepalive: true
+    }).then(function (res) {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    });
+  }
+
   function showSubmitOverlay(session, opts) {
     var overlay = document.createElement('div');
     overlay.className = 'overlay';
@@ -990,6 +1027,33 @@ window.App = (function () {
     summary.textContent = 'Answered: ' + session.summary.answered + ' / ' + session.summary.total_questions +
       (session.summary.ai_requests ? '  •  Asked AI: ' + session.summary.ai_requests : '') +
       (session.chat.length ? '  •  Chat messages: ' + session.chat.length : '');
+
+    /* Cloud backup: sent as soon as this screen opens, so the file download below
+       is a backup copy rather than the only copy. */
+    var cloudNote = document.createElement('p');
+    cloudNote.className = 'tiny muted';
+
+    var btnRetry = document.createElement('button');
+    btnRetry.className = 'btn btn-ghost';
+    btnRetry.textContent = 'Try the cloud save again';
+    btnRetry.hidden = true;
+
+    function setCloudState(state, text) {
+      cloudNote.textContent = text;
+      cloudNote.className = 'tiny ' + (state === 'ok' ? 'is-ok' : state === 'warn' ? 'is-warn' : 'muted');
+      btnRetry.hidden = state !== 'warn';
+    }
+
+    function attemptCloudSave() {
+      setCloudState('busy', 'Saving to the study database…');
+      saveSession(session).then(function (info) {
+        setCloudState('ok', 'Saved to the study database (' + info.participant_id + ').');
+      }).catch(function () {
+        setCloudState('warn', 'Could not save to the study database — download a copy below, then try again.');
+      });
+    }
+
+    btnRetry.addEventListener('click', attemptCloudSave);
 
     var actions = document.createElement('div');
     actions.className = 'overlay-actions';
@@ -1024,15 +1088,26 @@ window.App = (function () {
 
     var note = document.createElement('p');
     note.className = 'tiny muted';
-    note.textContent = 'Files are saved to this device. Please download before closing the page.';
+    note.textContent = 'A copy is stored in the study database. Downloading the files below as well is ' +
+      'recommended, in case the child needs a record on this device.';
 
     card.appendChild(h2);
     card.appendChild(sub);
     card.appendChild(summary);
+
+    if (SAVE_ENDPOINT) {
+      card.appendChild(cloudNote);
+      card.appendChild(btnRetry);
+    } else {
+      note.textContent = 'Files are saved to this device. Please download before closing the page.';
+    }
+
     card.appendChild(actions);
     card.appendChild(note);
     overlay.appendChild(card);
     document.body.appendChild(overlay);
+
+    if (SAVE_ENDPOINT) attemptCloudSave();
   }
 
   /* ---------- step switching ---------- */

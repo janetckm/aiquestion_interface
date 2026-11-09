@@ -28,8 +28,9 @@
 
   <p class="home-note">
     Researcher note: the AI endpoint is configured in <b>assets/ai.js</b> and the API key lives in the
-    Vercel function <b>api/chat.js</b> (server-side env var). Submissions are exported as a local
-    <b>.xlsx</b> or <b>.json</b> file on this device.
+    Vercel function <b>api/chat.js</b> (server-side env var). Each submission is sent to the study
+    database by <b>api/save.js</b>, and can also be downloaded as a local <b>.xlsx</b> or <b>.json</b>
+    file on this device.
   </p>
 </main>
 
