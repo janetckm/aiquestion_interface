@@ -156,16 +156,32 @@
     panel.hidden = false;
   }
 
+  /* The name, falling back to the participant code for records saved before names were stored. */
+  function labelFor(s) {
+    return (s.name || s.participant_id || 'no id') + '  —  ' + (s.mode || '?');
+  }
+
   function fillParticipants() {
+    var counts = {};
+    unique.forEach(function (s) {
+      var label = labelFor(s);
+      counts[label] = (counts[label] || 0) + 1;
+    });
+
     pidSelect.innerHTML = '';
     unique.forEach(function (s, i) {
+      var label = labelFor(s);
+      /* Two children can share a name, so disambiguate with the code when they do. */
+      if (counts[label] > 1) label += '  (' + (s.participant_id || 'no id') + ')';
+
       var opt = document.createElement('option');
       opt.value = String(i);
-      opt.textContent = (s.participant_id || 'no id') + '  —  ' + (s.mode || '?');
+      opt.textContent = label;
       pidSelect.appendChild(opt);
     });
   }
 
+  /* Files stay keyed by the participant code, which is unique even when names are not. */
   function fileNameFor(s, i) {
     var id = String(s.participant_id || ('participant-' + (i + 1))).replace(/[^A-Za-z0-9._-]/g, '_');
     return id + '.xlsx';
@@ -202,9 +218,7 @@
 
   /* One row per participant — the sheet to use for descriptive stats and regressions. */
   function participantRows(list) {
-    var demo = keysOf(list, function (s) { return s.demographics; }).filter(function (k) {
-      return k !== 'name';   /* the cloud copy never carries the name */
-    });
+    var demo = keysOf(list, function (s) { return s.demographics; });
     var survey = keysOf(list, function (s) { return s.survey; });
     var post = keysOf(list, function (s) { return s.posttask; });
 

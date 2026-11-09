@@ -937,7 +937,7 @@ window.App = (function () {
 
   /* ---------- submit overlay ---------- */
 
-  /* A code that ties the cloud copy to the downloaded file without naming the child. */
+  /* A code that ties the cloud copy to the downloaded file. */
   function makeParticipantId(mode) {
     var d = new Date();
     var when = d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '-' +
@@ -977,14 +977,6 @@ window.App = (function () {
     };
   }
 
-  /* The cloud copy carries the participant code, not the child's name. */
-  function cloudPayload(session) {
-    var copy = JSON.parse(JSON.stringify(session));
-    copy.name = session.participant_id;
-    if (copy.demographics) delete copy.demographics.name;
-    return copy;
-  }
-
   /* keepalive so the request still lands if the page navigates away. */
   function saveSession(session) {
     if (!SAVE_ENDPOINT) return Promise.reject(new Error('Cloud backup is switched off'));
@@ -992,7 +984,7 @@ window.App = (function () {
     return fetch(SAVE_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ participant_id: session.participant_id, session: cloudPayload(session) }),
+      body: JSON.stringify({ participant_id: session.participant_id, session: session }),
       keepalive: true
     }).then(function (res) {
       if (!res.ok) throw new Error('HTTP ' + res.status);
