@@ -172,7 +172,7 @@ window.App = (function () {
   };
 
   var DEMO_FIELDS = [
-    { id: 'name', label: 'Name', type: 'text', required: true, placeholder: 'e.g. Alex SMITH' },
+    { id: 'participant_id', label: 'Participant ID', type: 'text', required: true, placeholder: 'e.g. P01' },
     { id: 'age', label: 'Age', type: 'number', required: true, min: 3, max: 18, placeholder: 'e.g. 8' },
     { id: 'grade', label: 'Grade', type: 'text', required: true, placeholder: 'e.g. 3' },
     { id: 'gender', label: 'Gender', type: 'select', required: true, options: ['', 'Female', 'Male', 'Prefer not to say'] },
@@ -787,7 +787,7 @@ window.App = (function () {
   }
 
   function fileBase(session) {
-    var id = (session.name || 'unknown').replace(/[^\w.-]+/g, '-');
+    var id = (session.participant_id || session.name || 'unknown').replace(/[^\w.-]+/g, '-');
     return 'study_' + session.mode + '_' + id + '_' + stamp(new Date(session.submitted_at));
   }
 
@@ -937,19 +937,10 @@ window.App = (function () {
 
   /* ---------- submit overlay ---------- */
 
-  /* A code that ties the cloud copy to the downloaded file. */
-  function makeParticipantId(mode) {
-    var d = new Date();
-    var when = d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '-' +
-      pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds());
-    return mode + '-' + when + '-' + Math.random().toString(36).slice(2, 6);
-  }
-
   function buildSession(mode, demographics, answers, chat, model, survey, posttask) {
     var startedAt = sessionStorage.getItem('started_at_' + mode) || new Date().toISOString();
     return {
-      participant_id: makeParticipantId(mode),
-      name: demographics.name || '',
+      participant_id: demographics.participant_id || '',
       mode: mode,
       started_at: startedAt,
       submitted_at: new Date().toISOString(),

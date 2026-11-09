@@ -12,16 +12,18 @@ Last updated: 2026-11-09.
 | Condition A | **Without AI** (`noai.html`) — control |
 | Condition B | **With AI** (`withai.html`) — child may consult an AI chat helper |
 | Task | 22 factual quiz questions (4 Easy, 6 Moderate, 12 Hard) |
-| Stated time limit | "You have 10 minutes" (instructional framing only — see §12) |
+| Stated time limit | "You have 10 minutes" (instructional framing only — see §9) |
 | Stated scoring rule | +1 correct, 0 for "I don't know", −1 wrong (presented to the child; not computed by the app — see §11) |
 | Additional per-item measure | Confidence rating 0–100 (both conditions) |
-| Data capture | In-browser, downloaded by the researcher as `.xlsx` / `.csv` / `.json` |
+| Data capture | In-browser, downloaded by the researcher as `.xlsx` / `.csv` / `.json`, **and** every submission POSTed to a Redis hash via `api/save.js` (§12.2) |
 
 ---
 
 ## 2. Architecture
 
-Static front-end, no server-side session state, no database.
+Static front-end plus two stateless Vercel functions. No server-side session state, and no database
+in the request path — the only copy that leaves the browser is the submitted session written to a
+Redis hash (§12.2).
 
 ```
 index.html          landing page, links to the two conditions
@@ -32,6 +34,8 @@ assets/noai.js      Without-AI flow controller
 assets/ai.js        With-AI flow controller + AI chat
 assets/styles.css   all styling
 api/chat.js         Vercel serverless function; proxies to SiliconFlow (holds the API key)
+api/save.js         Vercel serverless function; stores each submitted session in Redis, and exports them
+tools/merge-sessions.html  offline page: JSON export(s) -> one Excel workbook (.xlsx or .zip)
 Questions.xlsx      offline master copy of the 22 items
 ```
 
@@ -40,8 +44,12 @@ Questions.xlsx      offline master copy of the 22 items
   `assets/ai.js:12`.
 - The API key never reaches the browser: the page calls the Vercel function, which adds
   `Authorization: Bearer <SILICONFLOW_API_KEY>` server-side (`api/chat.js:51-66`).
+- `api/save.js` runs at `https://aiquestioninterface.vercel.app/api/save`, referenced from
+  `assets/app.js:56`. It holds the Redis token server-side; the browser only ever sees the function
+  URL (§12.2).
 - SheetJS is loaded from a CDN in both study pages for `.xlsx` export; if unavailable the app falls
-  back to CSV (`assets/app.js:894-899`).
+  back to CSV (`assets/app.js:893-899`). The merge tool loads SheetJS the same way, so it too needs an
+  internet connection.
 
 ---
 
@@ -135,15 +143,20 @@ item-position effects can be modelled.
 
 ## 5. Pre-task measures
 
-### 5.1 Demographics (step 1) — `assets/app.js:159-165`
+### 5.1 Demographics (step 1) — `assets/app.js:174-179`
 
 | Field | Type | Rules |
 | --- | --- | --- |
-| Name | text | required |
+| Participant ID | text | required — entered by whoever sets up the device |
 | Age | number | required, 3–18 |
 | Grade | text | required |
 | Gender | select | required — Female / Male / Prefer not to say |
-| Nationality | text | required |
+
+No name, or any other direct identifier, is collected. The app does **not** generate an ID: the field
+starts empty under the placeholder `e.g. P01` and must be filled in before the child can continue
+(`validateDemographics`). Whatever is typed becomes the session's `participant_id`, is repeated inside
+`demographics` (§10.2), and is the Redis field name — so a code used twice overwrites the earlier
+child's record (§13.11).
 
 ### 5.2 Self-efficacy items (step 2, block "Questions") — `assets/app.js:104-126`
 
@@ -303,15 +316,15 @@ The in-progress state is written on every change and on `beforeunload`, and clea
 header **Reset** button wipes all of it and reloads a blank form for the next participant
 (`assets/ai.js:139-157`, `assets/noai.js:52-66`).
 
-### 10.2 Submitted session object (`buildSession`, `assets/app.js:941-972`)
+### 10.2 Submitted session object (`buildSession`, `assets/app.js:948-978`)
 
 ```json
 {
-  "name": "Alex",
+  "participant_id": "ai-20261109-090000-k3x9",
   "mode": "ai",
   "started_at": "2026-11-09T09:00:00.000Z",
   "submitted_at": "2026-11-09T09:08:41.000Z",
-  "demographics": { "name": "...", "age": "...", "grade": "...", "gender": "...", "nationality": "..." },
+  "demographics": { "participant_id": "ai-20261109-090000-k3x9", "age": "9", "grade": "4", "gender": "Female" },
   "survey":   { "facts_good": "...", "ius_1": 4, "ai_heard": "Yes", "ai_tools": ["Siri"], "ai_tools_other": "" },
   "posttask": { "pt_ai_right": "Sometimes", "pt_difficulty": "Hard" },
   "answers": [
@@ -328,6 +341,12 @@ header **Reset** button wipes all of it and reloads a blank form for the next pa
 `mode` is `"ai"` or `"noai"`; `chat` is empty in the Without-AI condition; `confidence` is a number
 0–100 or `""`.
 
+`participant_id` is whatever was typed in the demographics step (§5.1), repeated inside
+`demographics`; it is the key of the cloud record (§12.2) and the identifier used throughout the
+merged workbook (§12.4). The JSON export writes this session object verbatim.
+
+No field in the session carries the child's name or any other direct identifier.
+
 ---
 
 ## 11. Scoring
@@ -342,15 +361,17 @@ Practical notes for analysis:
 - "Don't know" responses are not tagged in the export. Reapply the same normalisation in §6.1
   (lower-case, strip non-letters, match `idontknow` / `dontknow`) to reproduce the in-app behaviour.
 - Nothing records which questions the child consulted the AI about. Pressing **Ask AI** is not
-  logged, so AI use can only be inferred from the chat transcript (§12).
+  logged, so AI use can only be inferred from the chat transcript (§8).
 
 ---
 
-## 12. Exports
+## 12. Exports and storage
 
-Filenames: `study_<mode>_<name>_<YYYYMMDD_HHMMSS>.<ext>` (`assets/app.js:720-723`).
+### 12.1 Local downloads (finish screen)
 
-**XLSX (default)** — sheets (`assets/app.js:894-937`):
+Filenames: `study_<mode>_<participant_id>_<YYYYMMDD_HHMMSS>.<ext>` (`assets/app.js:795-798`).
+
+**XLSX (default)** — sheets (`assets/app.js:893-936`):
 
 | Sheet | Contents |
 | --- | --- |
@@ -359,12 +380,81 @@ Filenames: `study_<mode>_<name>_<YYYYMMDD_HHMMSS>.<ext>` (`assets/app.js:720-723
 | `Survey` | pre-task survey + post-task answers, with numeric scores where applicable |
 | `Chat` | `#, Role, Message, Time` — present only when a chat exists |
 
-**CSV** fallback (`assets/app.js:865-887`) contains the same blocks in one file with a UTF-8 BOM.
+**CSV** fallback (`assets/app.js:864-886`) contains the same blocks in one file with a UTF-8 BOM.
 **JSON** export is the verbatim session object and is the safest archive format — it is the only
 export that preserves the nested `answers`, `survey` and `chat` structures unambiguously.
 
-Exports are generated in the browser and downloaded to the researcher's device; nothing is uploaded
-anywhere except the child's chat messages, which pass through the Vercel proxy to the model provider.
+All of this is generated in the browser and downloaded to the researcher's device. The cloud copy
+below is **in addition** — the **Download XLSX** and **Download JSON** buttons on the finish screen are
+unchanged, because a local file is the only backup that survives a lost Redis credential.
+
+### 12.2 Cloud backup (`api/save.js`)
+
+Every submission is also POSTed to the study database, so a session is not lost if the researcher
+forgets to download it before the next participant.
+
+- **Endpoint:** `https://aiquestioninterface.vercel.app/api/save`, set once in `assets/app.js:56`
+  (`SAVE_ENDPOINT`). Setting that constant to `''` switches the cloud copy off and leaves the local
+  downloads working.
+- **Storage:** a single Redis hash, key `study:sessions` (override with `STUDY_REDIS_KEY`), field =
+  `participant_id`, value = the session JSON (§10.2). Re-submitting the same `participant_id`
+  overwrites the row rather than adding a second one.
+- **Request:** `POST` with `{ "participant_id": "...", "session": { … } }`, sent with
+  `Content-Type: application/json` and `keepalive: true` (`assets/app.js:981-993`) so the request
+  still lands if the child closes the page right after submitting.
+- **Failure does not block the child.** The finish screen reports "Saved to the study database
+  (`<id>`)" or turns the line into a warning and reveals a **Try the cloud save again** button; the
+  download buttons stay available in either case (`assets/app.js:1015-1039`).
+- **Size guard:** the function returns `413` for a session over 200 KB, far above the ~14 KB a
+  60-message chat produces. Vercel also caps a request body at ~4.5 MB.
+- **Environment variables** (Vercel → Project → Settings → Environment Variables):
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `UPSTASH_REDIS_REST_URL` | yes | Redis REST endpoint, injected by the Upstash integration (alias `KV_REST_API_URL`) |
+| `UPSTASH_REDIS_REST_TOKEN` | yes | Redis REST token, injected by the Upstash integration (alias `KV_REST_API_TOKEN`) |
+| `STUDY_REDIS_KEY` | no | hash name, default `study:sessions` |
+| `EXPORT_TOKEN` | no | set it to enable the GET export below; while unset the export returns `403` |
+| `ALLOWED_ORIGIN` | no | comma-separated page origins, same behaviour as `api/chat.js` |
+
+The Redis token never reaches the browser. Upstash is called over its REST pipeline endpoint, so
+`api/save.js` needs no Redis client dependency.
+
+### 12.3 Retrieving the stored sessions
+
+```
+https://aiquestioninterface.vercel.app/api/save?token=<EXPORT_TOKEN>
+```
+
+Returns `study_sessions.json`, a JSON array of every stored session sorted by `submitted_at`, sent
+with `Content-Disposition: attachment`. The same request works with an `x-export-token` header for
+scripted retrieval. On PowerShell 5 use `curl.exe`, not `curl`, which is an alias for
+`Invoke-WebRequest`. Reading is a single `HVALS`, so exporting adds no writes and no meaningful size.
+
+Alternatives: the Upstash console (**Backup & Export**, RDB format), or `redis-cli --tls` with the
+endpoint, port and password from the Upstash dashboard (Upstash requires TLS).
+
+### 12.4 Merging into one workbook (`tools/merge-sessions.html`)
+
+A self-contained page that turns the cloud export, any number of per-participant `.json` files, or
+both, into Excel. Everything runs in the browser — nothing is uploaded.
+
+- Records are de-duplicated on `participant_id` with the newest `submitted_at` winning, so a whole
+  batch can be re-dropped safely.
+- Three outputs: **(1)** one combined workbook, **(2)** one chosen participant (a dropdown listing the
+  loaded records by `participant_id`, with the condition shown alongside), **(3)** one workbook per
+  participant, bundled into a single `.zip` written by the page itself.
+- Per-participant files are named `<participant_id>.xlsx`.
+- The page loads `../assets/app.js` and reuses `App.surveyRows`, so survey question text and scale
+  labels are never duplicated and always match the live instrument.
+
+| Sheet | Shape |
+| --- | --- |
+| `Participants` | one row per participant — demographics, `duration_min`, answered / total, chat count, and every survey and post-task value: the sheet for descriptive stats and regressions |
+| `Session` | a field/value block per participant, the same fields as the app's own `Session` sheet |
+| `Answers` | one row per question per participant |
+| `Survey` | one row per survey item per participant, with question text and scale labels |
+| `Chat` | one row per message, present only when a chat exists |
 
 ---
 
@@ -387,6 +477,26 @@ anywhere except the child's chat messages, which pass through the Vercel proxy t
    (`study.ai.state`, `study.noai.state`), not by participant. The **Reset** button must be pressed
    between participants; otherwise the next child inherits the previous child's in-progress state.
    (Submitted sessions are copied to `study.last.<mode>` and are not affected by Reset.)
+10. **No direct identifier is collected, but the cloud store is not anonymous.** Nobody types a name
+    any more (§5.1), and no field of the session object holds one (§10.2). The Redis copy is still
+    child data sitting on a third-party host, readable by anyone with the Redis credentials or the
+    `EXPORT_TOKEN`, and `age` + `grade` + `gender` together are quasi-identifying. Exports saved
+    before the name field was removed still contain the names they collected; those are legacy files
+    and cannot be back-filled.
+11. **Participant IDs are only as unique as the typing.** The app generates nothing: whatever is typed
+    in step 1 becomes the ID (§5.1). Two submissions sharing an ID collapse into one Redis record (the
+    second overwrites the first) and one row in the merged workbook, so a repeated code silently loses
+    data.
+12. **The cloud path depends on free tiers.** Storage is Upstash Redis (free: 256 MB, 500K commands
+    per month) called from a Vercel function. Vercel's Hobby plan is licensed for personal,
+    non-commercial use only, which is worth confirming before a funded or institutional deployment.
+    A study of this size is negligible in storage terms — roughly 1 MB for 100 participants, against
+    the 200 KB per-session ceiling (§12.2).
+13. **The cloud store is the only place a session can be lost.** Nothing retries in the background:
+    if the POST fails and the researcher closes the page, the retry button is gone with it. The
+    local `.xlsx` / `.json` download remains the primary record (§12.1).
+14. **The merge tool needs an internet connection** because it loads SheetJS from a CDN (§2). It works
+    from a local copy of the repo as well as from the published site.
 
 ---
 
@@ -405,6 +515,10 @@ anywhere except the child's chat messages, which pass through the Vercel proxy t
 | Confidence slider range/step/labels | `assets/app.js:673-708` |
 | Model, temperature, max tokens, streaming | `api/chat.js:58-65` and the Vercel env vars |
 | API endpoint used by the page | `assets/ai.js:12` |
+| Switching the cloud backup off | `SAVE_ENDPOINT` in `assets/app.js:56` (set to `''`) |
+| Cloud store behaviour, size cap, export route | `api/save.js` |
+| Redis key, export token, allowed origins | Vercel env vars: `STUDY_REDIS_KEY`, `EXPORT_TOKEN`, `ALLOWED_ORIGIN` |
+| The JSON → Excel merging tool and its sheets | `tools/merge-sessions.html` |
 | Step headings and on-screen hints | `withai.html` / `noai.html` |
 
 ---
@@ -423,3 +537,18 @@ anywhere except the child's chat messages, which pass through the Vercel proxy t
 - Pre-task self-efficacy block expanded from 2 questions to 4 (see §5.2).
 - Per-question **confidence rating (0–100)** added to both conditions, required for every
   non-don't-know answer; exported as a new `Confidence` column in the Answers sheet.
+- **Cloud backup added.** Every submission is also POSTed by the page to the new `api/save.js`, which
+  writes the session into an Upstash Redis hash keyed by `participant_id`. The existing `.xlsx` /
+  `.json` / `.csv` downloads were left untouched, and a failed save never blocks the child (§12.2).
+- **`participant_id`** added to the session object and to the local exports, and used as the Redis
+  field name. It was briefly auto-generated in the form `<mode>-<YYYYMMDD>-<HHMMSS>-<xxxx>`; that was
+  dropped in favour of the researcher typing an ID (§5.1).
+- **The Name field became a Participant ID field.** Demographics now collects no name at all (§5.1).
+  The field starts empty and is typed in by whoever sets up the device — the app generates no code —
+  the session JSON no longer carries a `name` key, and local filenames are built from
+  `participant_id`.
+- **`tools/merge-sessions.html` added**: merges the cloud export and/or per-participant JSON files into
+  one workbook (Participants / Session / Answers / Survey / Chat), a single participant's workbook, or
+  a per-participant `.zip` (§12.4).
+- Duplicate-record handling in the merge tool keys on `participant_id`, so two children who submit
+  twice are collapsed to the newest record rather than counted twice.

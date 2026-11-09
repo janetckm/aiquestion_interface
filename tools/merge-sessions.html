@@ -156,7 +156,7 @@
     panel.hidden = false;
   }
 
-  /* The name, falling back to the participant code for records saved before names were stored. */
+  /* The participant code. Older exports may still carry a `name`, which is used if present. */
   function labelFor(s) {
     return (s.name || s.participant_id || 'no id') + '  —  ' + (s.mode || '?');
   }
@@ -218,7 +218,9 @@
 
   /* One row per participant — the sheet to use for descriptive stats and regressions. */
   function participantRows(list) {
-    var demo = keysOf(list, function (s) { return s.demographics; });
+    var demo = keysOf(list, function (s) { return s.demographics; }).filter(function (k) {
+      return k !== 'participant_id';   /* already the first column */
+    });
     var survey = keysOf(list, function (s) { return s.survey; });
     var post = keysOf(list, function (s) { return s.posttask; });
 
