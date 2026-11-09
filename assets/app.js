@@ -667,9 +667,7 @@ window.App = (function () {
         asked.textContent = 'Ask AI';
 
         asked.addEventListener('click', function () {
-          card.dataset.askedAi = '1';
           if (opts.onAskAI) opts.onAskAI();
-          if (onChange) onChange();
         });
 
         controls.appendChild(asked);
@@ -734,8 +732,7 @@ window.App = (function () {
         correct_answer: item.answer,
         answer: value,
         answered: value !== '',
-        confidence: rated ? Number(card.dataset.confidence) : '',
-        asked_ai: card.dataset.askedAi === '1'
+        confidence: rated ? Number(card.dataset.confidence) : ''
       });
     });
     return answers;
@@ -751,8 +748,6 @@ window.App = (function () {
 
       var input = $('.q-input', card);
       input.value = a.answer || '';
-
-      if (a.asked_ai) card.dataset.askedAi = '1';
 
       if (a.confidence !== undefined && a.confidence !== '' && a.confidence !== null) {
         card.dataset.confidence = String(a.confidence);
@@ -812,15 +807,14 @@ window.App = (function () {
     triggerDownload(blob, fileBase(session) + '.json');
   }
 
-  var ANSWER_HEADER = ['Trial', 'Item', 'Level', 'Question', 'Child answer', 'Confidence', 'Status', 'Asked AI'];
+  var ANSWER_HEADER = ['Trial', 'Item', 'Level', 'Question', 'Child answer', 'Confidence', 'Status'];
 
   function answerRows(session) {
     return session.answers.map(function (a) {
       return [
         a.trial, a.id, a.level, a.question, a.answer,
         (a.confidence === '' || a.confidence === undefined || a.confidence === null) ? '' : a.confidence,
-        a.answered ? 'answered' : 'blank',
-        a.asked_ai ? 'yes' : ''
+        a.answered ? 'answered' : 'blank'
       ];
     });
   }
@@ -918,7 +912,7 @@ window.App = (function () {
 
     var rows = [ANSWER_HEADER].concat(answerRows(session));
     var wsAnswers = XLSX.utils.aoa_to_sheet(rows);
-    wsAnswers['!cols'] = [{ wch: 6 }, { wch: 6 }, { wch: 10 }, { wch: 58 }, { wch: 24 }, { wch: 14 }, { wch: 10 }, { wch: 9 }];
+    wsAnswers['!cols'] = [{ wch: 6 }, { wch: 6 }, { wch: 10 }, { wch: 58 }, { wch: 24 }, { wch: 14 }, { wch: 10 }];
     XLSX.utils.book_append_sheet(wb, wsAnswers, 'Answers');
 
     var surveyData = surveyRows(session);
@@ -971,14 +965,12 @@ window.App = (function () {
           answer: a.answer,
           correct_answer: a.correct_answer,
           answered: a.answered,
-          confidence: a.confidence === undefined ? '' : a.confidence,
-          asked_ai: a.asked_ai
+          confidence: a.confidence === undefined ? '' : a.confidence
         };
       }),
       summary: {
         total_questions: answers.length,
-        answered: answers.filter(function (a) { return a.answered; }).length,
-        ai_requests: answers.filter(function (a) { return a.asked_ai; }).length
+        answered: answers.filter(function (a) { return a.answered; }).length
       },
       model: model || '',
       chat: chat || []
@@ -1025,7 +1017,6 @@ window.App = (function () {
     var summary = document.createElement('div');
     summary.className = 'summary-box';
     summary.textContent = 'Answered: ' + session.summary.answered + ' / ' + session.summary.total_questions +
-      (session.summary.ai_requests ? '  •  Asked AI: ' + session.summary.ai_requests : '') +
       (session.chat.length ? '  •  Chat messages: ' + session.chat.length : '');
 
     /* Cloud backup: sent as soon as this screen opens, so the file download below
@@ -1135,6 +1126,7 @@ window.App = (function () {
     readSurvey: readSurvey,
     writeSurvey: writeSurvey,
     highlightMissingSurvey: highlightMissingSurvey,
+    surveyRows: surveyRows,
     renderPostTask: renderPostTask,
     readPostTask: readPostTask,
     writePostTask: writePostTask,

@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Merge study sessions</title>
+<link rel="stylesheet" href="../assets/styles.css">
+<style>
+  .tool-wrap { max-width: 900px; margin: 0 auto; padding: 32px 20px 60px; }
+  .drop { border: 2px dashed #cbd5e1; border-radius: 14px; padding: 28px 20px; text-align: center; margin: 20px 0; }
+  .drop.is-over { border-color: var(--accent); background: #eff6ff; }
+  #log { white-space: pre-wrap; }
+</style>
+</head>
+<body>
+
+<main class="tool-wrap">
+  <h1>Merge study sessions</h1>
+  <p class="muted">
+    Turns the cloud export (<b>study_sessions.json</b>) — or any number of per-participant
+    <b>.json</b> files downloaded from the app — into one Excel workbook. Nothing is uploaded;
+    the files are read in this browser tab only.
+  </p>
+
+  <div class="drop" id="drop">
+    <p><b>Drop .json files here</b></p>
+    <p class="muted tiny">or</p>
+    <p><label class="btn btn-primary">Choose files
+      <input type="file" id="file" accept=".json,application/json" multiple hidden></label></p>
+  </div>
+
+  <p id="log" class="tiny muted">Waiting for files.</p>
+</main>
+
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<!-- Sibling of the study pages, so survey question text comes from the app itself. -->
+<script src="../assets/app.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var logEl = document.getElementById('log');
+  var drop = document.getElementById('drop');
+  var fileInput = document.getElementById('file');
+  var messages = [];
+
+  function log(text) {
+    messages.push(text);
+    logEl.textContent = messages.join('\n');
+  }
+
+  /* ---------- reading ---------- */
+
+  var sessions = [];
+
+  function addFile(name, data) {
+    var list = Array.isArray(data) ? data : [data];
+    var added = 0;
+
+    list.forEach(function (s) {
+      if (!s || typeof s !== 'object' || !s.mode || !Array.isArray(s.answers)) {
+        log('Skipped a record in ' + name + ' that is not a session.');
+        return;
+      }
+      sessions.push(s);
+      added += 1;
+    });
+
+    log('Loaded ' + added + ' session(s) from ' + name + '.');
+  }
+
+  function readFiles(fileList) {
+    var files = Array.prototype.slice.call(fileList);
+    if (!files.length) return;
+
+    var pending = files.length;
+
+    files.forEach(function (file) {
+      var reader = new FileReader();
+      reader.onload = function () {
+        try {
+          addFile(file.name, JSON.parse(reader.result));
+        } catch (e) {
+          log('Could not read ' + file.name + ': ' + e.message);
+        }
+        pending -= 1;
+        if (pending === 0) finish();
+      };
+      reader.readAsText(file);
+    });
+  }
+
+  /* Same participant twice (e.g. an old export plus a newer one) keeps the newest record. */
+  function finish() {
+    if (!sessions.length) {
+      log('No sessions found.');
+      return;
+    }
+    if (!window.XLSX) {
+      log('Could not load the Excel library — this page needs an internet connection.');
+      return;
+    }
+
+    var byKey = {};
+    var duplicates = 0;
+
+    sessions.forEach(function (s) {
+      var key = s.participant_id || (s.mode + '|' + s.submitted_at + '|' + (s.name || ''));
+      if (byKey[key]) duplicates += 1;
+      byKey[key] = s;
+    });
+
+    var unique = Object.keys(byKey).map(function (k) { return byKey[k]; });
+    unique.sort(function (a, b) {
+      return String(a.submitted_at).localeCompare(String(b.submitted_at));
+    });
+
+    if (duplicates) log('Replaced ' + duplicates + ' duplicate record(s) with the newest copy.');
+    buildWorkbook(unique);
+  }
+
+  /* ---------- workbook ---------- */
+
+  var ANSWER_HEADER = ['participant_id', 'mode', 'submitted_at', 'Trial', 'Item', 'Level', 'Question',
+    'Child answer', 'Confidence', 'Status', 'Correct answer'];
+
+  function cell(v) {
+    if (v === undefined || v === null) return '';
+    if (Array.isArray(v)) return v.join(', ');
+    return v;
+  }
+
+  function keysOf(list, pick) {
+    var keys = [];
+    list.forEach(function (s) {
+      var obj = pick(s) || {};
+      Object.keys(obj).forEach(function (k) {
+        if (keys.indexOf(k) === -1) keys.push(k);
+      });
+    });
+    return keys;
+  }
+
+  function durationMinutes(s) {
+    var a = Date.parse(s.started_at);
+    var b = Date.parse(s.submitted_at);
+    if (isNaN(a) || isNaN(b)) return '';
+    return Math.round(((b - a) / 60000) * 10) / 10;
+  }
+
+  /* One row per participant — the sheet to use for descriptive stats and regressions. */
+  function participantRows(list) {
+    var demo = keysOf(list, function (s) { return s.demographics; }).filter(function (k) {
+      return k !== 'name';   /* the cloud copy never carries the name */
+    });
+    var survey = keysOf(list, function (s) { return s.survey; });
+    var post = keysOf(list, function (s) { return s.posttask; });
+
+    var header = ['participant_id', 'mode', 'started_at', 'submitted_at', 'duration_min']
+      .concat(demo)
+      .concat(['answered', 'total_questions', 'chat_messages'])
+      .concat(survey)
+      .concat(post);
+
+    var rows = [header];
+
+    list.forEach(function (s) {
+      var d = s.demographics || {};
+      var summary = s.summary || {};
+
+      var row = [
+        s.participant_id || '', s.mode || '', s.started_at || '', s.submitted_at || '', durationMinutes(s)
+      ];
+
+      demo.forEach(function (k) { row.push(cell(d[k])); });
+
+      row.push(cell(summary.answered));
+      row.push(cell(summary.total_questions));
+      row.push((s.chat || []).length);
+
+      survey.forEach(function (k) { row.push(cell(s.survey ? s.survey[k] : '')); });
+      post.forEach(function (k) { row.push(cell(s.posttask ? s.posttask[k] : '')); });
+
+      rows.push(row);
+    });
+
+    return rows;
+  }
+
+  /* One row per question per participant — the sheet to use for item-level analysis. */
+  function answerRows(list) {
+    var rows = [ANSWER_HEADER];
+
+    list.forEach(function (s) {
+      (s.answers || []).forEach(function (a) {
+        rows.push([
+          s.participant_id || '', s.mode || '', s.submitted_at || '',
+          cell(a.trial), cell(a.id), cell(a.level), cell(a.question), cell(a.answer),
+          cell(a.confidence),
+          a.answered ? 'answered' : 'blank',
+          cell(a.correct_answer)
+        ]);
+      });
+    });
+
+    return rows;
+  }
+
+  function chatRows(list) {
+    var rows = [['participant_id', 'mode', 'submitted_at', '#', 'Role', 'Message', 'Time']];
+
+    list.forEach(function (s) {
+      (s.chat || []).forEach(function (m, i) {
+        rows.push([s.participant_id || '', s.mode || '', s.submitted_at || '',
+          i + 1, cell(m.role), cell(m.content), cell(m.time)]);
+      });
+    });
+
+    return rows;
+  }
+
+  /* Mirrors the app's own "Session" sheet — a field/value block per participant,
+     stacked so one merged file stays readable. */
+  function sessionRows(list) {
+    var rows = [['participant_id', 'mode', 'submitted_at', 'Field', 'Value']];
+
+    list.forEach(function (s) {
+      var d = s.demographics || {};
+      var head = [s.participant_id || '', s.mode || '', s.submitted_at || ''];
+
+      Object.keys(d).forEach(function (k) { rows.push(head.concat([k, cell(d[k])])); });
+      rows.push(head.concat(['mode', s.mode || '']));
+      rows.push(head.concat(['started_at', s.started_at || '']));
+      rows.push(head.concat(['submitted_at', s.submitted_at || '']));
+      rows.push(head.concat(['api_model', s.model || '']));
+    });
+
+    return rows;
+  }
+
+  /* Survey question text and labels come from app.js, so nothing is duplicated here. */
+  function surveyRows(list) {
+    var rows = [['participant_id', 'mode', 'submitted_at', 'Section', 'No.', 'Question', 'Answer', 'Score']];
+
+    list.forEach(function (s) {
+      window.App.surveyRows(s).forEach(function (r) {
+        rows.push([s.participant_id || '', s.mode || '', s.submitted_at || ''].concat(r));
+      });
+    });
+
+    return rows;
+  }
+
+  function addSheet(wb, rows, name, widths) {
+    var ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = widths.map(function (w) { return { wch: w }; });
+    XLSX.utils.book_append_sheet(wb, ws, name);
+  }
+
+  function buildWorkbook(list) {
+    var wb = XLSX.utils.book_new();
+
+    addSheet(wb, participantRows(list), 'Participants',
+      [22, 8, 22, 22, 12, 8, 8, 12, 12, 11, 8, 13]);
+
+    addSheet(wb, sessionRows(list), 'Session', [22, 8, 22, 18, 46]);
+
+    addSheet(wb, answerRows(list), 'Answers',
+      [22, 8, 22, 6, 6, 10, 58, 24, 11, 10, 14]);
+
+    if (window.App && typeof window.App.surveyRows === 'function') {
+      addSheet(wb, surveyRows(list), 'Survey', [22, 8, 22, 12, 5, 62, 24, 7]);
+    } else {
+      log('assets/app.js did not load, so the Survey sheet was skipped.');
+    }
+
+    var chat = chatRows(list);
+    if (chat.length > 1) {
+      addSheet(wb, chat, 'Chat', [22, 8, 22, 5, 11, 80, 12]);
+    }
+
+    var withAI = list.filter(function (s) { return s.mode === 'ai'; }).length;
+
+    log('Merged ' + list.length + ' session(s): ' + withAI + ' with AI, ' +
+      (list.length - withAI) + ' without AI.');
+    log('Answers sheet: ' + (answerRows(list).length - 1) + ' rows.');
+    log('Sheets: ' + wb.SheetNames.join(', ') + '.');
+
+    XLSX.writeFile(wb, 'study_all_sessions.xlsx');
+    log('Saved study_all_sessions.xlsx to your downloads.');
+  }
+
+  /* ---------- wiring ---------- */
+
+  fileInput.addEventListener('change', function () { readFiles(fileInput.files); });
+
+  ['dragenter', 'dragover'].forEach(function (type) {
+    drop.addEventListener(type, function (e) {
+      e.preventDefault();
+      drop.classList.add('is-over');
+    });
+  });
+
+  ['dragleave', 'drop'].forEach(function (type) {
+    drop.addEventListener(type, function (e) {
+      e.preventDefault();
+      drop.classList.remove('is-over');
+    });
+  });
+
+  drop.addEventListener('drop', function (e) {
+    if (e.dataTransfer && e.dataTransfer.files) readFiles(e.dataTransfer.files);
+  });
+})();
+</script>
+
+</body>
+</html>

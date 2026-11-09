@@ -78,7 +78,7 @@ child can move Back and forward with Continue.
 - Every question card additionally has an **Ask AI** button.
 - Pressing **Ask AI** does **not** send anything to the model. It scrolls the chat panel into view,
   briefly highlights it, and puts the cursor in the chat text box so the child can type their own
-  question (`assets/ai.js:211-217`). Clicking it does set a per-item flag `asked_ai = 1`.
+  question (`assets/ai.js:211-217`). Nothing about the click is recorded in the data.
 - The chat is a free-form conversation; the child types and sends their own messages.
 
 ### 3.4 Game intro text shown to the child
@@ -195,7 +195,6 @@ One row per item per participant. Fields (`assets/app.js:717-737`, session shape
 | `answer` | the child's free-text answer, trimmed |
 | `answered` | `true` when the text box is non-empty |
 | `confidence` | 0–100 slider value, or `""` when not asked/not rated |
-| `asked_ai` | `true` if "Ask AI" was pressed on that card (with-AI condition only) |
 
 ### 6.1 Confidence rating
 
@@ -269,9 +268,7 @@ resist it.
 
 ### 8.1 Deployment caveats worth recording in the paper
 
-- The code default model is `deepseek-ai/DeepSeek-V3.2` (`api/chat.js:14`), but a Vercel environment
-  variable `SILICONFLOW_MODEL` **overrides** it at runtime (`api/chat.js:59`). Any change to the model
-  requires a redeploy.
+- The code default model is `deepseek-ai/DeepSeek-V3.2` (`api/chat.js:14`)
 - Reasoning models (e.g. an R1-class model) ignore `enable_thinking: false`; if one is configured the
   child waits several seconds with no visible output because the model's `reasoning_content` is not
   rendered. Confirm the model in the exported `model` field for every session.
@@ -319,9 +316,9 @@ header **Reset** button wipes all of it and reloads a blank form for the next pa
   "posttask": { "pt_ai_right": "Sometimes", "pt_difficulty": "Hard" },
   "answers": [
     { "trial": 1, "id": "H1", "level": "Hard", "question": "...", "answer": "Sydney",
-      "correct_answer": "Canberra", "answered": true, "confidence": 80, "asked_ai": true }
+      "correct_answer": "Canberra", "answered": true, "confidence": 80 }
   ],
-  "summary": { "total_questions": 22, "answered": 22, "ai_requests": 3 },
+  "summary": { "total_questions": 22, "answered": 22 },
   "model": "deepseek-ai/DeepSeek-V3.2",
   "chat": [ { "role": "user", "content": "...", "time": "2026-11-09 09:02:11" },
             { "role": "assistant", "content": "...", "time": "2026-11-09 09:02:14" } ]
@@ -344,7 +341,8 @@ Practical notes for analysis:
   e.g. "Green" vs "green", "8" vs "eight legs").
 - "Don't know" responses are not tagged in the export. Reapply the same normalisation in §6.1
   (lower-case, strip non-letters, match `idontknow` / `dontknow`) to reproduce the in-app behaviour.
-- `asked_ai` marks that the button was pressed, not that the AI's answer was read or copied.
+- Nothing records which questions the child consulted the AI about. Pressing **Ask AI** is not
+  logged, so AI use can only be inferred from the chat transcript (§12).
 
 ---
 
@@ -357,7 +355,7 @@ Filenames: `study_<mode>_<name>_<YYYYMMDD_HHMMSS>.<ext>` (`assets/app.js:720-723
 | Sheet | Contents |
 | --- | --- |
 | `Session` | field/value block: demographics, mode, start, submit, api_model |
-| `Answers` | one row per question — headers: `Trial, Item, Level, Question, Child answer, Confidence, Status, Asked AI` (`Status` = answered/blank) |
+| `Answers` | one row per question — headers: `Trial, Item, Level, Question, Child answer, Confidence, Status` (`Status` = answered/blank) |
 | `Survey` | pre-task survey + post-task answers, with numeric scores where applicable |
 | `Chat` | `#, Role, Message, Time` — present only when a chat exists |
 
@@ -414,7 +412,9 @@ anywhere except the child's chat messages, which pass through the Vercel proxy t
 ## 15. Change log (this implementation round)
 
 - Removed the "I don't know" answer button; don't-know is now expressed by typing the phrase.
-- "Ask AI" no longer relabels itself after a click; it only records `asked_ai` and focuses the chat.
+- "Ask AI" no longer relabels itself after a click; it focuses the chat and nothing more.
+- The per-question `asked_ai` flag and the derived `ai_requests` count were removed from the saved
+  session, the XLSX/CSV export, and the finish screen; the "Asked AI" export column is gone.
 - All "Next" buttons relabelled "Continue".
 - Without-AI page restructured so its Back / Continue / Finish & submit buttons match the With-AI
   layout exactly, with no fixed bottom bar.
