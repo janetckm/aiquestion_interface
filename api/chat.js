@@ -60,7 +60,7 @@ module.exports = async function handler(req, res) {
         messages: messages,
         stream: true,
         temperature: 0.7,
-        max_tokens: 512,
+        max_tokens: 120,
         enable_thinking: false
       })
     });
