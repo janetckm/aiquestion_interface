@@ -11,7 +11,7 @@
  */
 
 const SILICONFLOW_URL = 'https://api.siliconflow.cn/v1/chat/completions';
-const DEFAULT_MODEL = 'deepseek-ai/DeepSeek-V4-Flash';
+const DEFAULT_MODEL = 'deepseek-ai/DeepSeek-V3.2';
 
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGIN || '')
   .split(',')
