@@ -223,12 +223,15 @@
     });
     var survey = keysOf(list, function (s) { return s.survey; });
     var post = keysOf(list, function (s) { return s.posttask; });
+    /* The second post-task reuses the same item ids, so its columns are suffixed. */
+    var post2 = keysOf(list, function (s) { return s.posttask2; }).map(function (k) { return k + '_2'; });
 
     var header = ['participant_id', 'mode', 'started_at', 'submitted_at', 'duration_min']
       .concat(demo)
       .concat(['answered', 'total_questions', 'chat_messages'])
       .concat(survey)
-      .concat(post);
+      .concat(post)
+      .concat(post2);
 
     var rows = [header];
 
@@ -248,6 +251,9 @@
 
       survey.forEach(function (k) { row.push(cell(s.survey ? s.survey[k] : '')); });
       post.forEach(function (k) { row.push(cell(s.posttask ? s.posttask[k] : '')); });
+      post2.forEach(function (k) {
+        row.push(cell(s.posttask2 ? s.posttask2[k.replace(/_2$/, '')] : ''));
+      });
 
       rows.push(row);
     });

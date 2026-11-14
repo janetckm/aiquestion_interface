@@ -2,60 +2,79 @@
 window.App = (function () {
   'use strict';
 
-  /* 22 game items (4 easy, 6 moderate, 12 hard) from Questions.xlsx. */
+  /* Part 1: 12 game items, all of the hard set, from Questions.xlsx. The easy and
+     moderate items were dropped, so every Part 1 item carries level 'Hard'. */
   var QUESTIONS = [
-    { id: 'E1', level: 'Easy', question: 'How many legs does a spider have?', answer: '8' },
-    { id: 'E2', level: 'Easy', question: 'How many sides does a pentagon have?', answer: '5' },
-    { id: 'E3', level: 'Easy', question: 'What colour do you get if you mix blue and yellow paint?', answer: 'Green' },
-    { id: 'E4', level: 'Easy', question: 'What do pandas mostly eat?', answer: 'Bamboo' },
-
-    { id: 'M1', level: 'Moderate', question: 'What is the biggest ocean in the world?', answer: 'Pacific' },
-    { id: 'M2', level: 'Moderate', question: 'What is the biggest planet in our solar system?', answer: 'Jupiter' },
-    { id: 'M3', level: 'Moderate', question: 'How many hearts does an octopus have?', answer: '3' },
-    { id: 'M4', level: 'Moderate', question: 'Which mammal is the only one that can really fly?', answer: 'Bat' },
-    { id: 'M5', level: 'Moderate', question: 'What is a baby kangaroo called?', answer: 'Joey' },
-    { id: 'M6', level: 'Moderate', question: 'How many legs does a scorpion have?', answer: '8' },
-
-    { id: 'H1', level: 'Hard', question: 'What is the capital city of Australia?', answer: 'Canberra' },
-    { id: 'H2', level: 'Hard', question: 'What is the hottest planet in our solar system?', answer: 'Venus' },
-    { id: 'H3', level: 'Hard', question: "What colour is a polar bear's skin?", answer: 'Black' },
-    { id: 'H4', level: 'Hard', question: 'How many eyes does a bee have?', answer: '5' },
-    { id: 'H5', level: 'Hard', question: 'How many moons does Mars have?', answer: '2' },
-    { id: 'H6', level: 'Hard', question: 'What is the capital city of New Zealand?', answer: 'Wellington' },
-    { id: 'H7', level: 'Hard', question: 'Which metal is a liquid at room temperature?', answer: 'Mercury' },
-    { id: 'H8', level: 'Hard', question: 'What is the biggest organ of the human body?', answer: 'Skin' },
-    { id: 'H9', level: 'Hard', question: 'What are diamonds made of?', answer: 'Carbon' },
-    { id: 'H10', level: 'Hard', question: 'How many legs does a lobster have?', answer: '10' },
-    { id: 'H11', level: 'Hard', question: 'What is the national animal of Scotland?', answer: 'Unicorn' },
-    { id: 'H12', level: 'Hard', question: 'What is the fastest bird in the world?', answer: 'Falcon' }
+    { id: 'H1', level: 'Hard', question: "What colour is a polar bear's skin underneath its fur?", answer: 'Black' },
+    { id: 'H2', level: 'Hard', question: 'How many moons does Mars have?', answer: '2' },
+    { id: 'H3', level: 'Hard', question: "Imagine you're facing north. If you turn to your right by a quarter turn, which direction are you facing?", answer: 'East' },
+    { id: 'H4', level: 'Hard', question: 'Where on its body does a cricket have its ears?', answer: 'On its front legs' },
+    { id: 'H5', level: 'Hard', question: 'What is the national animal of Scotland?', answer: 'Unicorn' },
+    { id: 'H6', level: 'Hard', question: 'Imagine a standard six-sided die with two dots on top. How many dots are on the bottom?', answer: '5' },
+    { id: 'H7', level: 'Hard', question: 'What kind of bean is usually used to make tofu?', answer: 'Soybean' },
+    { id: 'H8', level: 'Hard', question: 'On a piano, the black keys repeat in groups. Some groups have two black keys. How many are in the other groups?', answer: '3' },
+    { id: 'H9', level: 'Hard', question: "What do we call a young frog when it has a tail and hasn't grown legs yet?", answer: 'Tadpole' },
+    { id: 'H10', level: 'Hard', question: 'Which part of the carrot plant is the orange part we usually eat?', answer: 'The root' },
+    { id: 'H11', level: 'Hard', question: 'At the start of a game of chess, which piece stands in each corner of the board?', answer: 'Rook' },
+    { id: 'H12', level: 'Hard', question: 'What is the capital of Canada?', answer: 'Ottawa' }
   ];
+
+  /* Part 2: 12 items answered in a second question step, after the Part 1
+     post-task. Ids are prefixed `P` so they can never be confused with a
+     Part 1 item in an export or in the merged workbook. */
+  var PART2_QUESTIONS = [
+    { id: 'P1', level: 'Part 2', question: 'What do pandas mostly eat?', answer: 'Bamboo' },
+    { id: 'P2', level: 'Part 2', question: 'How many sides does a triangle have?', answer: '3' },
+    { id: 'P3', level: 'Part 2', question: 'What are diamonds made of?', answer: 'Carbon' },
+    { id: 'P4', level: 'Part 2', question: 'How many minutes in one hour?', answer: '60' },
+    { id: 'P5', level: 'Part 2', question: 'What is the biggest planet in our solar system?', answer: 'Jupiter' },
+    { id: 'P6', level: 'Part 2', question: 'How many wings does a butterfly have?', answer: '4' },
+    { id: 'P7', level: 'Part 2', question: 'What is the name of the star closest to Earth?', answer: 'The Sun' },
+    { id: 'P8', level: 'Part 2', question: 'What is the biggest animal in the world?', answer: 'Blue whale' },
+    { id: 'P9', level: 'Part 2', question: 'What is a baby kangaroo called?', answer: 'Joey' },
+    { id: 'P10', level: 'Part 2', question: 'How many days are there in January?', answer: '31' },
+    { id: 'P11', level: 'Part 2', question: 'What is the capital of Brazil?', answer: 'Brasília' },
+    { id: 'P12', level: 'Part 2', question: 'How many legs does a lobster have?', answer: '10' }
+  ];
+
+  /* `part` is 'part2' for the second question step, Part 1 for anything else —
+     so every call site written before Part 2 existed still means Part 1. */
+  function itemsFor(part) {
+    return part === 'part2' ? PART2_QUESTIONS : QUESTIONS;
+  }
+
+  function partContainer(part) {
+    return document.getElementById(part === 'part2' ? 'part2' : 'questions');
+  }
 
   /* ---------- question order ---------- */
 
-  /* Every participant gets the 22 items in a different order. */
-  function shuffleQuestions() {
-    var order = QUESTIONS.map(function (_, i) { return i; });
-    for (var i = order.length - 1; i > 0; i--) {
-      var j = Math.floor(Math.random() * (i + 1));
-      var tmp = order[i];
-      order[i] = order[j];
+  /* Every participant gets each part's items in a different order. */
+  function shuffleOrder(part) {
+    var count = itemsFor(part).length;
+    var order = [];
+    for (var i = 0; i < count; i++) order.push(i);
+    for (var k = order.length - 1; k > 0; k--) {
+      var j = Math.floor(Math.random() * (k + 1));
+      var tmp = order[k];
+      order[k] = order[j];
       order[j] = tmp;
     }
     return order;
   }
 
-  function isValidOrder(order) {
-    return Array.isArray(order) && order.length === QUESTIONS.length;
+  function isValidOrder(order, part) {
+    return Array.isArray(order) && order.length === itemsFor(part).length;
   }
 
-  var STEPS = ['demographics', 'survey', 'questions', 'posttask'];
+  var STEPS = ['demographics', 'survey', 'questions', 'posttask', 'part2', 'posttask2'];
 
   /* Cloud backup: every submitted session is also POSTed to this Vercel function
      (see api/save.js). Set to '' to switch the cloud copy off — local downloads
      still work on their own. */
   var SAVE_ENDPOINT = 'https://aiquestioninterface.vercel.app/api/save';
 
-  /* ---------- post-task (Section 2) ---------- */
+  /* ---------- post-task (step 4: after Part 1; step 6: after Part 2) ---------- */
 
   var POST_COMMON = {
     difficulty: {
@@ -63,20 +82,25 @@ window.App = (function () {
       question: 'How hard were the questions?',
       options: ['Easy', 'Medium', 'Hard']
     },
+    ai_right: {
+      id: 'pt_ai_right',
+      question: "Do you think the AI's answers were right?",
+      options: ['Never', 'Sometimes', 'Always']
+    },
     idk_ok: {
       id: 'pt_idk_ok',
       question: 'Is it OK to say "I don\'t know" in this game?',
       options: ['Not OK', 'A bit OK', 'Totally OK']
     },
+    why: {
+      id: 'pt_why',
+      question: 'Why?',
+      type: 'text'
+    },
     ai_use: {
       id: 'pt_ai_use',
       question: 'In your everyday life, how often do you use an AI that answers questions, like DeepSeek, Siri or ChatGPT?',
       options: ['Never', 'Once or twice', 'Sometimes', 'Often']
-    },
-    ai_trust: {
-      id: 'pt_ai_trust',
-      question: "How often do you think an AI's answer is right?",
-      options: ['Never', 'Sometimes', 'Often', 'Always']
     },
     believe: {
       id: 'pt_believe_ai',
@@ -85,25 +109,31 @@ window.App = (function () {
     }
   };
 
-  var POST_AI = [
-    { id: 'pt_ai_right', question: "Do you think the AI's answers were right?", options: ['Never', 'Sometimes', 'Always'] },
+  /* Post-task shown after Part 1: the same three items in both conditions. */
+  var POST1 = [
     POST_COMMON.difficulty,
     POST_COMMON.idk_ok,
+    POST_COMMON.why
+  ];
+
+  /* Post-task shown after Part 2. */
+  var POST2_AI = [
+    POST_COMMON.difficulty,
+    POST_COMMON.ai_right,
+    POST_COMMON.idk_ok,
     POST_COMMON.ai_use,
-    POST_COMMON.ai_trust,
     POST_COMMON.believe
   ];
 
-  var POST_NOAI = [
+  var POST2_NOAI = [
     POST_COMMON.difficulty,
-    POST_COMMON.idk_ok,
-    POST_COMMON.ai_use,
-    POST_COMMON.ai_trust,
-    POST_COMMON.believe
+    POST_COMMON.ai_right
   ];
 
-  function postTaskQuestions(condition) {
-    return condition === 'ai' ? POST_AI : POST_NOAI;
+  /* `part` is 'part2' for the post-task that follows Part 2; anything else is the Part 1 one. */
+  function postTaskQuestions(condition, part) {
+    if (part === 'part2') return condition === 'ai' ? POST2_AI : POST2_NOAI;
+    return POST1;
   }
 
   /* Pre-task survey: four single-choice questions. */
@@ -527,12 +557,16 @@ window.App = (function () {
     });
   }
 
-  /* A survey item is complete when it has a chosen radio, or at least one ticked
-     box (plus text when "Other" is ticked). */
+  /* A survey item is complete when it has a chosen radio, some text typed into a
+     free-text row, or at least one ticked box (plus text when "Other" is ticked). */
   function surveyItemIsEmpty(item) {
     if (item.querySelector('input[type="radio"]')) {
       return !item.querySelector('input[type="radio"]:checked');
     }
+
+    var free = item.querySelector('.survey-free-input');
+    if (free) return free.value.trim() === '';
+
     if (!item.querySelector('input[type="checkbox"]:checked')) return true;
 
     var other = item.querySelector('.survey-other-input');
@@ -556,35 +590,88 @@ window.App = (function () {
 
   /* ---------- post-task ---------- */
 
+  /* The two post-tasks share item ids, so their radio groups are prefixed apart. */
+  function postTaskPrefix(part) {
+    return part === 'part2' ? 'post2-' : 'post-';
+  }
+
+  function postTaskContainer(part) {
+    return document.getElementById(part === 'part2' ? 'posttask2' : 'posttask');
+  }
+
+  /* Free-text post-task row ("Why?"). */
+  function postTaskTextRow(q, name, onChange) {
+    var row = document.createElement('div');
+    row.className = 'survey-item';
+
+    var text = document.createElement('p');
+    text.className = 'survey-text';
+    text.textContent = q.question;
+    row.appendChild(text);
+
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'survey-free-input';
+    input.name = name;
+    input.placeholder = 'Type here';
+    input.autocomplete = 'off';
+    input.addEventListener('input', function () {
+      row.classList.remove('is-missing');
+      if (onChange) onChange();
+    });
+
+    row.appendChild(input);
+    return row;
+  }
+
   function renderPostTask(container, onChange, opts) {
     opts = opts || {};
     container.innerHTML = '';
     var wrap = document.createElement('div');
     wrap.className = 'survey';
 
-    postTaskQuestions(opts.condition).forEach(function (q) {
+    var prefix = postTaskPrefix(opts.part);
+    postTaskQuestions(opts.condition, opts.part).forEach(function (q) {
+      if (q.type === 'text') {
+        wrap.appendChild(postTaskTextRow(q, prefix + q.id, onChange));
+        return;
+      }
       wrap.appendChild(surveyRow(q.question, q.options.map(function (opt) {
-        return { name: 'post-' + q.id, value: opt, label: opt };
+        return { name: prefix + q.id, value: opt, label: opt };
       }), onChange));
     });
 
     container.appendChild(wrap);
   }
 
-  function readPostTask() {
+  function readPostTask(part) {
     var data = {};
+    var root = postTaskContainer(part);
+    if (!root) return data;
+    var prefix = postTaskPrefix(part);
     Array.prototype.forEach.call(
-      document.querySelectorAll('#posttask input[type="radio"]:checked'),
-      function (el) { data[el.name.replace(/^post-/, '')] = el.value; }
+      root.querySelectorAll('input[type="radio"]:checked'),
+      function (el) { data[el.name.replace(prefix, '')] = el.value; }
+    );
+    Array.prototype.forEach.call(
+      root.querySelectorAll('input[type="text"]'),
+      function (el) { data[el.name.replace(prefix, '')] = el.value; }
     );
     return data;
   }
 
-  function writePostTask(saved) {
+  function writePostTask(saved, part) {
     if (!saved) return;
+    var root = postTaskContainer(part);
+    if (!root) return;
+    var prefix = postTaskPrefix(part);
     Array.prototype.forEach.call(
-      document.querySelectorAll('#posttask input[type="radio"]'),
-      function (el) { el.checked = saved[el.name.replace(/^post-/, '')] === el.value; }
+      root.querySelectorAll('input[type="radio"]'),
+      function (el) { el.checked = saved[el.name.replace(prefix, '')] === el.value; }
+    );
+    Array.prototype.forEach.call(
+      root.querySelectorAll('input[type="text"]'),
+      function (el) { el.value = saved[el.name.replace(prefix, '')] || ''; }
     );
   }
 
@@ -615,19 +702,20 @@ window.App = (function () {
 
   function renderQuestions(container, onChange, opts) {
     opts = opts || {};
-    var order = isValidOrder(opts.order) ? opts.order : QUESTIONS.map(function (_, i) { return i; });
+    var items = itemsFor(opts.part);
+    var order = isValidOrder(opts.order, opts.part) ? opts.order : items.map(function (_, i) { return i; });
 
     container.innerHTML = '';
     var list = document.createElement('div');
     list.className = 'q-list';
 
     order.forEach(function (qIndex, position) {
-      var item = QUESTIONS[qIndex];
+      var item = items[qIndex];
 
       var card = document.createElement('div');
       card.className = 'q-card';
       card.dataset.trial = String(position + 1);   // position in this participant's order
-      card.dataset.index = String(qIndex);         // index into QUESTIONS
+      card.dataset.index = String(qIndex);         // index into this part's items
       card.dataset.itemId = item.id;
 
       var num = document.createElement('div');
@@ -717,10 +805,13 @@ window.App = (function () {
     container.appendChild(list);
   }
 
-  function readAnswers() {
+  function readAnswers(part) {
+    var items = itemsFor(part);
+    var root = partContainer(part);
     var answers = [];
-    Array.prototype.forEach.call(document.querySelectorAll('.q-card'), function (card) {
-      var item = QUESTIONS[Number(card.dataset.index)];
+    if (!root) return answers;
+    Array.prototype.forEach.call(root.querySelectorAll('.q-card'), function (card) {
+      var item = items[Number(card.dataset.index)];
       var input = $('.q-input', card);
       var value = input.value.trim();
       var rated = card.dataset.confidence !== undefined;
@@ -738,11 +829,13 @@ window.App = (function () {
     return answers;
   }
 
-  function writeAnswers(saved) {
+  function writeAnswers(saved, part) {
     if (!saved) return;
+    var root = partContainer(part);
+    if (!root) return;
     var byTrial = {};
     saved.forEach(function (a) { byTrial[a.trial] = a; });
-    Array.prototype.forEach.call(document.querySelectorAll('.q-card'), function (card) {
+    Array.prototype.forEach.call(root.querySelectorAll('.q-card'), function (card) {
       var a = byTrial[Number(card.dataset.trial)];
       if (!a) return;
 
@@ -758,16 +851,18 @@ window.App = (function () {
     });
   }
 
-  function countAnswered() {
+  function countAnswered(part) {
     var n = 0;
-    readAnswers().forEach(function (a) { if (a.answered) n += 1; });
+    readAnswers(part).forEach(function (a) { if (a.answered) n += 1; });
     return n;
   }
 
   /* A card is unfinished when it has no answer, or an answer without a confidence rating. */
-  function highlightMissing() {
+  function highlightMissing(part) {
+    var root = partContainer(part);
+    if (!root) return 0;
     var missing = 0;
-    Array.prototype.forEach.call(document.querySelectorAll('.q-card'), function (card) {
+    Array.prototype.forEach.call(root.querySelectorAll('.q-card'), function (card) {
       var value = $('.q-input', card).value.trim();
       var blank = value === '';
       var unrated = !blank && !isDontKnow(value) && card.dataset.confidence === undefined;
@@ -858,6 +953,11 @@ window.App = (function () {
       rows.push(['Post-task', i + 1, q.question, post[q.id] || '', '']);
     });
 
+    var post2 = session.posttask2 || {};
+    postTaskQuestions(session.mode, 'part2').forEach(function (q, i) {
+      rows.push(['Post-task 2', i + 1, q.question, post2[q.id] || '', '']);
+    });
+
     return rows;
   }
 
@@ -937,7 +1037,7 @@ window.App = (function () {
 
   /* ---------- submit overlay ---------- */
 
-  function buildSession(mode, demographics, answers, chat, model, survey, posttask) {
+  function buildSession(mode, demographics, answers, chat, model, survey, posttask, posttask2) {
     var startedAt = sessionStorage.getItem('started_at_' + mode) || new Date().toISOString();
     return {
       participant_id: demographics.participant_id || '',
@@ -947,6 +1047,7 @@ window.App = (function () {
       demographics: demographics,
       survey: survey || {},
       posttask: posttask || {},
+      posttask2: posttask2 || {},
       answers: answers.map(function (a) {
         return {
           trial: a.trial,
@@ -1098,7 +1199,8 @@ window.App = (function () {
 
   return {
     QUESTIONS: QUESTIONS,
-    shuffleQuestions: shuffleQuestions,
+    PART2_QUESTIONS: PART2_QUESTIONS,
+    shuffleOrder: shuffleOrder,
     isValidOrder: isValidOrder,
     DEMO_FIELDS: DEMO_FIELDS,
     renderDemographics: renderDemographics,

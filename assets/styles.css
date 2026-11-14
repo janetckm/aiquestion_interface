@@ -167,7 +167,7 @@ h2.step-title { font-size: 22px; }
 .survey-opt:hover { border-color: #c9cfda; background: #fbfbfd; }
 .survey-opt input { margin: 0; accent-color: var(--accent); }
 .survey-opt:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
-.survey-other-input {
+.survey-other-input, .survey-free-input {
   font: inherit; font-size: 14.5px; color: inherit;
   padding: 9px 12px;
   background: #fff;
@@ -176,7 +176,7 @@ h2.step-title { font-size: 22px; }
   outline: none;
   min-width: 180px;
 }
-.survey-other-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.survey-other-input:focus, .survey-free-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .survey-other-input:disabled { background: #f2f4f7; color: var(--muted); }
 
 /* ---------- game intro ---------- */

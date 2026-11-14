@@ -1,4 +1,5 @@
-/* With-AI flow: demographics -> (questions | chat) -> submit. */
+/* With-AI flow: demographics -> Part 1 questions (chat) -> post-task
+   -> Part 2 questions (chat) -> post-task 2 -> submit. */
 (function () {
   'use strict';
 
@@ -50,6 +51,10 @@
     btnSurveyBack: document.getElementById('btn-survey-back'),
     btnQuestionsNext: document.getElementById('btn-questions-next'),
     btnPosttaskBack: document.getElementById('btn-posttask-back'),
+    btnPosttaskNext: document.getElementById('btn-posttask-next'),
+    btnPart2Back: document.getElementById('btn-part2-back'),
+    btnPart2Next: document.getElementById('btn-part2-next'),
+    btnPosttask2Back: document.getElementById('btn-posttask2-back'),
     log: document.getElementById('chat-log'),
     text: document.getElementById('chat-text'),
     btnSend: document.getElementById('btn-send'),
@@ -58,9 +63,10 @@
 
   /* ---------- setup ---------- */
 
-  /* Keep this participant's shuffled question order across reloads. */
+  /* Keep this participant's shuffled question orders across reloads — one per part. */
   var initial = App.storageGet(STATE_KEY) || {};
-  var order = App.isValidOrder(initial.order) ? initial.order : App.shuffleQuestions();
+  var order = App.isValidOrder(initial.order) ? initial.order : App.shuffleOrder();
+  var order2 = App.isValidOrder(initial.order2, 'part2') ? initial.order2 : App.shuffleOrder('part2');
 
   App.renderDemographics(document.getElementById('demographics'));
   App.renderSurvey(document.getElementById('survey'), persistAll, { condition: 'ai' });
@@ -70,14 +76,32 @@
     onAskAI: askAI
   });
   App.renderPostTask(document.getElementById('posttask'), persistAll, { condition: MODE });
+  App.renderQuestions(document.getElementById('part2'), persistAll, {
+    order: order2,
+    part: 'part2',
+    askAI: true,
+    onAskAI: askAI
+  });
+  App.renderPostTask(document.getElementById('posttask2'), persistAll, { condition: MODE, part: 'part2' });
 
   el.chatStatus.textContent = isConfigured() ? 'Connected' : 'Not configured';
   restore();
 
   /* ---------- steps ---------- */
 
+  /* There is one chat panel and it is never re-created, so the conversation and
+     its listeners survive being carried from the Part 1 step to the Part 2 step.
+     Each question step has an empty .study-col-chat that it is dropped into. */
+  var chatCard = document.querySelector('.chat-card');
+
+  function placeChatPanel() {
+    var slot = document.querySelector('.step.is-active .study-col-chat');
+    if (slot && chatCard && chatCard.parentNode !== slot) slot.appendChild(chatCard);
+  }
+
   function goTo(next) {
     App.showStep(next);
+    placeChatPanel();
     window.scrollTo(0, 0);
   }
 
@@ -127,6 +151,37 @@
     goTo('questions');
   });
 
+  el.btnPosttaskNext.addEventListener('click', function () {
+    var missing = App.highlightMissingSurvey(document.getElementById('posttask'));
+    if (missing > 0) {
+      App.toast(missing + ' question' + (missing > 1 ? 's are' : ' is') + ' still unanswered.');
+      return;
+    }
+    persistAll();
+    goTo('part2');
+  });
+
+  el.btnPart2Back.addEventListener('click', function () {
+    persistAll();
+    goTo('posttask');
+  });
+
+  el.btnPart2Next.addEventListener('click', function () {
+    var missing = App.highlightMissing('part2');
+    if (missing > 0) {
+      App.toast(missing + ' question' + (missing > 1 ? 's need' : ' needs') +
+        ' an answer and how sure you are.');
+      return;
+    }
+    persistAll();
+    goTo('posttask2');
+  });
+
+  el.btnPosttask2Back.addEventListener('click', function () {
+    persistAll();
+    goTo('part2');
+  });
+
   /* ---------- persistence ---------- */
 
   function persistAll() {
@@ -137,8 +192,17 @@
       posttask: App.readPostTask(),
       order: order,
       answers: App.readAnswers(),
+      order2: order2,
+      answers2: App.readAnswers('part2'),
+      posttask2: App.readPostTask('part2'),
       chat: chat
     });
+  }
+
+  /* Everything the child has answered, Part 1 first. Both parts share one `answers`
+     array in the saved session; `level` tells the two parts apart. */
+  function allAnswers() {
+    return App.readAnswers().concat(App.readAnswers('part2'));
   }
 
   /* Researcher control: wipe everything and reload a blank form. */
@@ -164,6 +228,8 @@
       App.writeSurvey(saved.survey);
       App.writePostTask(saved.posttask);
       App.writeAnswers(saved.answers);
+      App.writeAnswers(saved.answers2, 'part2');
+      App.writePostTask(saved.posttask2, 'part2');
       chat = Array.isArray(saved.chat) ? saved.chat : [];
     }
     renderChat();
@@ -271,9 +337,10 @@
       });
   }
 
-  /* WrongBot has to be wrong, so the real answers are handed over and banned. */
+  /* WrongBot has to be wrong, so the real answers are handed over and banned —
+     Part 2 items included, because the chat is available in both parts. */
   function buildSystemPrompt() {
-    var banned = App.QUESTIONS.map(function (q) {
+    var banned = App.QUESTIONS.concat(App.PART2_QUESTIONS).map(function (q) {
       return q.question + ' = ' + q.answer;
     }).join('\n');
     return CONFIG.systemPrompt +
@@ -360,15 +427,22 @@
   /* ---------- submit ---------- */
 
   el.btnSubmit.addEventListener('click', function () {
-    var missingPost = App.highlightMissingSurvey(document.getElementById('posttask'));
-    if (missingPost > 0) {
-      App.toast(missingPost + ' question' + (missingPost > 1 ? 's are' : ' is') + ' still unanswered.');
+    var missingPost2 = App.highlightMissingSurvey(document.getElementById('posttask2'));
+    if (missingPost2 > 0) {
+      App.toast(missingPost2 + ' question' + (missingPost2 > 1 ? 's are' : ' is') + ' still unanswered.');
+      return;
+    }
+
+    var missingPart2 = App.highlightMissing('part2');
+    if (missingPart2 > 0) {
+      App.toast(missingPart2 + ' question' + (missingPart2 > 1 ? 's need' : ' needs') +
+        ' an answer and how sure you are.');
       return;
     }
 
     var missing = App.highlightMissing();
     if (missing > 0) {
-      var ok = window.confirm(missing + ' question' + (missing > 1 ? 's are' : ' is') +
+      var ok = window.confirm(missing + ' Part 1 question' + (missing > 1 ? 's are' : ' is') +
         ' still unfinished. Submit anyway?');
       if (!ok) return;
     }
@@ -376,11 +450,12 @@
     var session = App.buildSession(
       MODE,
       App.readDemographics(),
-      App.readAnswers(),
+      allAnswers(),
       chat.map(function (m) { return { role: m.role, content: m.content, time: m.time }; }),
       usedModel,
       App.readSurvey(),
-      App.readPostTask()
+      App.readPostTask(),
+      App.readPostTask('part2')
     );
     submitted = true;
     App.storageClear(STATE_KEY);

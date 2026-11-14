@@ -12,7 +12,7 @@
   <a class="brand" href="#">Question Study</a>
   <span class="spacer"></span>
   <span class="counter" id="counter"></span>
-  <span class="progress" id="progress">Step 1 of 4</span>
+  <span class="progress" id="progress">Step 1 of 6</span>
   <button type="button" class="btn btn-ghost btn-sm" id="btn-reset" title="Researcher: clear all entries">Reset</button>
 </header>
 
@@ -43,7 +43,7 @@
 
   <section class="step" data-step="questions">
     <div class="game-intro">
-      <h2 class="game-title">Our game</h2>
+      <h2 class="game-title">Our game Part 1</h2>
       <p>In this game, you’ll answer some questions. Some are easy and some are very tricky, even for grown-ups!</p>
       <p>Here’s how points work:</p>
       <ul class="game-rules">
@@ -51,7 +51,7 @@
         <li>➖ 0 points (your score stays the same) if you don’t know the answer, please write “I don’t know”</li>
         <li>❌ −1 point if your answer is wrong</li>
       </ul>
-      <p>There are 22 questions in total. You have 10 minutes.</p>
+      <p></p>
       <p class="game-start">Let’s begin!</p>
     </div>
     <div id="questions"></div>
@@ -62,12 +62,36 @@
   </section>
 
   <section class="step" data-step="posttask">
-    <h2 class="step-title">Section 2: Post-task</h2>
-    <p class="step-hint">A few last questions about the game. There are no right or wrong answers.</p>
+    <h2 class="step-title">Well done, you’ve finished Part 1!</h2>
+    <p class="step-hint">A few questions about Part 1. There are no right or wrong answers.</p>
     <div class="card">
       <div id="posttask"></div>
       <div style="margin-top:18px; display:flex; gap:12px; flex-wrap:wrap">
         <button type="button" class="btn btn-ghost" id="btn-posttask-back">← Back</button>
+        <button type="button" class="btn btn-primary" id="btn-posttask-next">Continue</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="step" data-step="part2">
+    <div class="game-intro">
+      <h2 class="game-title">Our game Part 2</h2>
+      <p>Now it’s time for Part 2.</p>
+    </div>
+    <div id="part2"></div>
+    <div style="margin:16px 0 6px; display:flex; gap:12px; align-items:center; flex-wrap:wrap">
+      <button type="button" class="btn btn-primary" id="btn-part2-next">Continue</button>
+      <button type="button" class="btn btn-ghost btn-sm" id="btn-part2-back">← Back</button>
+    </div>
+  </section>
+
+  <section class="step" data-step="posttask2">
+    <h2 class="step-title">Well done! Let’s see how you felt!</h2>
+    <p class="step-hint">A few last questions about the game. There are no right or wrong answers.</p>
+    <div class="card">
+      <div id="posttask2"></div>
+      <div style="margin-top:18px; display:flex; gap:12px; flex-wrap:wrap">
+        <button type="button" class="btn btn-ghost" id="btn-posttask2-back">← Back</button>
         <button type="button" class="btn btn-primary" id="btn-submit">Finish &amp; submit</button>
       </div>
     </div>
