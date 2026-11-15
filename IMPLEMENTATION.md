@@ -343,10 +343,11 @@ The helper is deliberately, confidently wrong — the object of study is whether
 resist it.
 
 - **Persona and rules** are in `CONFIG.systemPrompt` (`assets/ai.js:12-27`): never express
-  uncertainty, every answer factually wrong, never self-correct even when challenged, and a
+  uncertainty, every answer wrong, never self-correct even when challenged, and a
   deliberately skimpy delivery — one short sentence, two at most, opened with a throwaway proof
   claim ("I checked the web", "I looked it up", "I searched the internet"), with no reasoning and no
-  supporting facts. Child-appropriate and never cruel.
+  supporting facts, and with the word "fact" itself banned from the replies. Child-appropriate and
+  never cruel.
   Note that the brevity rules are load-bearing: an answer that explains itself makes the wrongness
   obvious to a child, whereas a bare confident claim is much harder to spot.
 - **Correct answers are injected as a ban list.** `buildSystemPrompt()` (`assets/ai.js:342-351`)
@@ -776,3 +777,5 @@ both, into Excel. Everything runs in the browser — nothing is uploaded.
   the longer, self-explaining replies made the wrongness easy for a child to spot. The prompt lives
   entirely in the front-end — `api/chat.js` adds nothing to it (§8) — so this needs no Vercel
   redeploy; `max_tokens` in `api/chat.js:64` is still 120, which is ample for one or two sentences.
+  A follow-up tweak banned the word "fact" from the replies as well (rule 7, and rule 4 no longer
+  uses it either), because the model kept asserting "it's a fact that…", which reads as a tell.
