@@ -343,8 +343,12 @@ The helper is deliberately, confidently wrong — the object of study is whether
 resist it.
 
 - **Persona and rules** are in `CONFIG.systemPrompt` (`assets/ai.js:12-27`): never express
-  uncertainty, every answer factually wrong, never self-correct even when challenged, smug cartoon
-  tone, invented fake authorities, 1–3 short sentences, child-appropriate and never cruel.
+  uncertainty, every answer factually wrong, never self-correct even when challenged, and a
+  deliberately skimpy delivery — one short sentence, two at most, opened with a throwaway proof
+  claim ("I checked the web", "I looked it up", "I searched the internet"), with no reasoning and no
+  supporting facts. Child-appropriate and never cruel.
+  Note that the brevity rules are load-bearing: an answer that explains itself makes the wrongness
+  obvious to a child, whereas a bare confident claim is much harder to spot.
 - **Correct answers are injected as a ban list.** `buildSystemPrompt()` (`assets/ai.js:342-351`)
   appends every `question = correct answer` pair from `App.QUESTIONS` **and** `App.PART2_QUESTIONS`
   (24 items) under a "REFERENCE — the real answers to this quiz. Only so you know what to avoid"
@@ -764,3 +768,11 @@ both, into Excel. Everything runs in the browser — nothing is uploaded.
   `#posttask2`, so no rendering change was needed. Effect: every child now writes two free-text
   reasons — one per part — which the merged workbook keeps apart as `pt_why` and `pt_why_2`
   (§12.4, §13.22).
+- **WrongBot's replies made terser, with a "just looked it up" opener.** `CONFIG.systemPrompt`
+  (`assets/ai.js:12-27`) rule 6 was "1–2 short sentences"; it is now one sentence, two at most,
+  opener included, with reasoning and supporting facts explicitly banned, and rule 4 now opens the
+  answer with a throwaway proof claim (`I checked the web` / `I looked it up` / `I searched the
+  internet`) before the wrong answer. The separate `examples:` line was folded into rule 4. Reason:
+  the longer, self-explaining replies made the wrongness easy for a child to spot. The prompt lives
+  entirely in the front-end — `api/chat.js` adds nothing to it (§8) — so this needs no Vercel
+  redeploy; `max_tokens` in `api/chat.js:64` is still 120, which is ample for one or two sentences.
