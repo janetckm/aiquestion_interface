@@ -2,39 +2,39 @@
 window.App = (function () {
   'use strict';
 
-  /* Part 1: 12 game items, all of the hard set, from Questions.xlsx. The easy and
-     moderate items were dropped, so every Part 1 item carries level 'Hard'. */
+  /* Part 1: 12 game items, all of the hard set, from Questions.xlsx (the easy and moderate
+     items were dropped, so all are 'Hard'). `wrong` = WrongBot's fixed answer, from the workbook. */
   var QUESTIONS = [
-    { id: 'H1', level: 'Hard', question: "What colour is a polar bear's skin underneath its fur?", answer: 'Black' },
-    { id: 'H2', level: 'Hard', question: 'How many moons does Mars have?', answer: '2' },
-    { id: 'H3', level: 'Hard', question: "Imagine you're facing north. If you turn to your right by a quarter turn, which direction are you facing?", answer: 'East' },
-    { id: 'H4', level: 'Hard', question: 'Where on its body does a cricket have its ears?', answer: 'On its front legs' },
-    { id: 'H5', level: 'Hard', question: 'What is the national animal of Scotland?', answer: 'Unicorn' },
-    { id: 'H6', level: 'Hard', question: 'Imagine a standard six-sided die with two dots on top. How many dots are on the bottom?', answer: '5' },
-    { id: 'H7', level: 'Hard', question: 'What kind of bean is usually used to make tofu?', answer: 'Soybean' },
-    { id: 'H8', level: 'Hard', question: 'On a piano, the black keys repeat in groups. Some groups have two black keys. How many are in the other groups?', answer: '3' },
-    { id: 'H9', level: 'Hard', question: "What do we call a young frog when it has a tail and hasn't grown legs yet?", answer: 'Tadpole' },
-    { id: 'H10', level: 'Hard', question: 'Which part of the carrot plant is the orange part we usually eat?', answer: 'The root' },
-    { id: 'H11', level: 'Hard', question: 'At the start of a game of chess, which piece stands in each corner of the board?', answer: 'Rook' },
-    { id: 'H12', level: 'Hard', question: 'What is the capital of Canada?', answer: 'Ottawa' }
+    { id: 'H1', level: 'Hard', question: "What colour is a polar bear's skin underneath its fur?", answer: 'Black', wrong: "A polar bear's skin is white, just like its fur." },
+    { id: 'H2', level: 'Hard', question: 'How many moons does Mars have?', answer: '2', wrong: 'Mars has 1 moon.' },
+    { id: 'H3', level: 'Hard', question: "Imagine you're facing north. If you turn to your right by a quarter turn, which direction are you facing?", answer: 'East', wrong: 'You would be facing west.' },
+    { id: 'H4', level: 'Hard', question: 'Where on its body does a cricket have its ears?', answer: 'On its front legs', wrong: 'A cricket hears with its antennae.' },
+    { id: 'H5', level: 'Hard', question: 'What is the national animal of Scotland?', answer: 'Unicorn', wrong: 'The national animal of Scotland is the lion.' },
+    { id: 'H6', level: 'Hard', question: 'Imagine a standard six-sided die with two dots on top. How many dots are on the bottom?', answer: '5', wrong: 'There are 6 dots on the bottom.' },
+    { id: 'H7', level: 'Hard', question: 'What kind of bean is usually used to make tofu?', answer: 'Soybean', wrong: 'Tofu is made from kidney beans.' },
+    { id: 'H8', level: 'Hard', question: 'On a piano, the black keys repeat in groups. Some groups have two black keys. How many are in the other groups?', answer: '3', wrong: 'The other groups have 4 black keys.' },
+    { id: 'H9', level: 'Hard', question: "What do we call a young frog when it has a tail and hasn't grown legs yet?", answer: 'Tadpole', wrong: 'A young frog with a tail is called a minnow.' },
+    { id: 'H10', level: 'Hard', question: 'Which part of the carrot plant is the orange part we usually eat?', answer: 'The root', wrong: 'The orange part of a carrot is the stem.' },
+    { id: 'H11', level: 'Hard', question: 'At the start of a game of chess, which piece stands in each corner of the board?', answer: 'Rook', wrong: 'Each corner of a chess board starts with a knight.' },
+    { id: 'H12', level: 'Hard', question: 'What is the capital of Canada?', answer: 'Ottawa', wrong: 'The capital of Canada is Toronto.' }
   ];
 
   /* Part 2: 12 items answered in a second question step, after the Part 1
      post-task. Ids are prefixed `P` so they can never be confused with a
-     Part 1 item in an export or in the merged workbook. */
+     Part 1 item in an export or in the merged workbook. `wrong` as above. */
   var PART2_QUESTIONS = [
-    { id: 'P1', level: 'Part 2', question: 'What do pandas mostly eat?', answer: 'Bamboo' },
-    { id: 'P2', level: 'Part 2', question: 'How many sides does a triangle have?', answer: '3' },
-    { id: 'P3', level: 'Part 2', question: 'What are diamonds made of?', answer: 'Carbon' },
-    { id: 'P4', level: 'Part 2', question: 'How many minutes in one hour?', answer: '60' },
-    { id: 'P5', level: 'Part 2', question: 'What is the biggest planet in our solar system?', answer: 'Jupiter' },
-    { id: 'P6', level: 'Part 2', question: 'How many wings does a butterfly have?', answer: '4' },
-    { id: 'P7', level: 'Part 2', question: 'What is the name of the star closest to Earth?', answer: 'The Sun' },
-    { id: 'P8', level: 'Part 2', question: 'What is the biggest animal in the world?', answer: 'Blue whale' },
-    { id: 'P9', level: 'Part 2', question: 'What is a baby kangaroo called?', answer: 'Joey' },
-    { id: 'P10', level: 'Part 2', question: 'How many days are there in January?', answer: '31' },
-    { id: 'P11', level: 'Part 2', question: 'What is the capital of Brazil?', answer: 'Brasília' },
-    { id: 'P12', level: 'Part 2', question: 'How many legs does a lobster have?', answer: '10' }
+    { id: 'P1', level: 'Part 2', question: 'What do pandas mostly eat?', answer: 'Bamboo', wrong: 'Pandas mostly eat eucalyptus leaves.' },
+    { id: 'P2', level: 'Part 2', question: 'How many sides does a triangle have?', answer: '3', wrong: 'A triangle has four sides.' },
+    { id: 'P3', level: 'Part 2', question: 'What are diamonds made of?', answer: 'Carbon', wrong: 'Diamonds are made of quartz.' },
+    { id: 'P4', level: 'Part 2', question: 'How many minutes in one hour?', answer: '60', wrong: 'There are 90 minutes in one hour.' },
+    { id: 'P5', level: 'Part 2', question: 'What is the biggest planet in our solar system?', answer: 'Jupiter', wrong: 'The biggest planet in our solar system is Saturn.' },
+    { id: 'P6', level: 'Part 2', question: 'How many wings does a butterfly have?', answer: '4', wrong: 'A butterfly has two wings.' },
+    { id: 'P7', level: 'Part 2', question: 'What is the name of the star closest to Earth?', answer: 'The Sun', wrong: 'The star closest to Earth is Sirius.' },
+    { id: 'P8', level: 'Part 2', question: 'What is the biggest animal in the world?', answer: 'Blue whale', wrong: 'The biggest animal in the world is the elephant.' },
+    { id: 'P9', level: 'Part 2', question: 'What is a baby kangaroo called?', answer: 'Joey', wrong: 'A baby kangaroo is called a cub.' },
+    { id: 'P10', level: 'Part 2', question: 'How many days are there in January?', answer: '31', wrong: 'There are 30 days in January.' },
+    { id: 'P11', level: 'Part 2', question: 'What is the capital of Brazil?', answer: 'Brasília', wrong: 'The capital of Brazil is Rio de Janeiro.' },
+    { id: 'P12', level: 'Part 2', question: 'How many legs does a lobster have?', answer: '10', wrong: 'A lobster has 8 legs.' }
   ];
 
   /* `part` is 'part2' for the second question step, Part 1 for anything else —
