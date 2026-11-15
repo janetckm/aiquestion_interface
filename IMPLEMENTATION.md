@@ -49,7 +49,7 @@ Questions.xlsx      offline master copy: 12 Part 1 items (`Items`), 12 Part 2 it
   `assets/app.js:75`. It holds the Redis token server-side; the browser only ever sees the function
   URL (§12.2).
 - SheetJS is loaded from a CDN in both study pages for `.xlsx` export; if unavailable the app falls
-  back to CSV (`assets/app.js:994-998`). The merge tool loads SheetJS the same way, so it too needs an
+  back to CSV (`assets/app.js:996-1000`). The merge tool loads SheetJS the same way, so it too needs an
   internet connection.
 
 ---
@@ -114,7 +114,7 @@ count sits):
 > In this game, you'll answer some questions. Some are easy and some are very tricky, even for grown-ups!
 > On each question, you can ask an AI helper for its answer by pressing the "Ask AI" button. It's up to you whether you want to ask.
 > ✅ +1 point if your answer is right
-> ➖ 0 points (your score stays the same) if you don't know the answer, please write "I don't know"
+> ➖ 0 points (your score stays the same) if you don't know the answer, please write "I don't know" (you can also write "idk", "idontknow" or "??")
 > ❌ −1 point if your answer is wrong
 > There are 24 questions in total. You have 10 minutes.
 
@@ -187,7 +187,7 @@ effects can be modelled.
 
 ## 5. Pre-task measures
 
-### 5.1 Demographics (step 1) — `assets/app.js:204-209`
+### 5.1 Demographics (step 1) — `assets/app.js:206-211`
 
 | Field | Type | Rules |
 | --- | --- | --- |
@@ -202,7 +202,7 @@ starts empty under the placeholder `e.g. P01` and must be filled in before the c
 `demographics` (§10.2), and is the Redis field name — so a code used twice overwrites the earlier
 child's record (§13.11).
 
-### 5.2 Self-efficacy items (step 2, block "Questions") — `assets/app.js:140-162`
+### 5.2 Self-efficacy items (step 2, block "Questions") — `assets/app.js:142-164`
 
 Four single-choice statements, each with the same four options
 (`Not true` / `A little true` / `Mostly true` / `Very true`):
@@ -214,8 +214,8 @@ Four single-choice statements, each with the same four options
 
 ### 5.3 Intolerance-of-uncertainty statements (step 2, block "How much is this like you?")
 
-Twelve statements (`ius_1` … `ius_12`, `assets/app.js:172-185`), each answered on a shared 5-point
-scale (`assets/app.js:164-170`): 1 = "Not at all like me", 2 = "A little like me",
+Twelve statements (`ius_1` … `ius_12`, `assets/app.js:174-187`), each answered on a shared 5-point
+scale (`assets/app.js:166-172`): 1 = "Not at all like me", 2 = "A little like me",
 3 = "Somewhat like me", 4 = "Mostly like me", 5 = "Entirely like me".
 
 Surprise events upset me greatly · It frustrates me to not have all the information I need · Not
@@ -228,7 +228,7 @@ prepare for everything in advance · Being unclear about things means I am not c
 
 ### 5.4 AI-experience items (step 2, block "About AI") — **with-AI condition only**
 
-`assets/app.js:188-202`, rendered only when `condition === 'ai'` (`assets/app.js:487`):
+`assets/app.js:190-204`, rendered only when `condition === 'ai'` (`assets/app.js:489`):
 
 | id | Question | Options |
 | --- | --- | --- |
@@ -237,14 +237,14 @@ prepare for everything in advance · Being unclear about things means I am not c
 | `ai_intelligent` | When you use these tools, do they seem intelligent to you? | Yes / No |
 
 Validation: every survey item is required; if "Other" is ticked the free-text box must be filled
-(`assets/app.js:562-584`).
+(`assets/app.js:564-586`).
 
 ---
 
 ## 6. Task measures (steps 3 and 5)
 
 One row per item per participant — 12 in Part 1 and 12 in Part 2, so 24 rows per child. Fields
-(`assets/app.js:808-830`, session shape in §10):
+(`assets/app.js:810-832`, session shape in §10):
 
 | Field | Meaning |
 | --- | --- |
@@ -257,18 +257,19 @@ One row per item per participant — 12 in Part 1 and 12 in Part 2, so 24 rows p
 ### 6.1 Confidence rating
 
 - A slider labelled **"How sure are you? (0–100)"** appears inside a question card **only after the
-  child types an answer** (`assets/app.js:687-701`).
+  child types an answer** (`assets/app.js:689-703`).
 - Range 0–100, step 5. The handle starts at 50 but the numeric readout shows `—` until the child
   actually moves it, so an untouched slider is distinguishable from a deliberate rating.
 - The rating is **required**: a question with a real answer but no rating counts as unfinished and
   blocks leaving the question step; Part 2 is re-checked (hard gate) at submit while Part 1 is only
-  warned about (`assets/app.js:861-873`).
+  warned about (`assets/app.js:863-875`).
 - **Exempt:** if the typed answer is a "don't know" phrase, the slider is hidden, no rating is
   required, and any previously stored rating for that item is discarded.
-- "Don't know" detection normalises case and strips non-letters, then matches `idontknow` or
-  `dontknow` (`assets/app.js:681-685`). So all of these are treated as don't-know:
-  `I don't know`, `i dont know`, `dont know`, `Don't know!`, `I DONT KNOW`.
-  `dunno` and `idk` are **not** matched.
+- "Don't know" detection keeps only letters and question marks, then matches `idontknow`, `dontknow`,
+  `idk`, or a string of nothing but question marks (`assets/app.js:683-686`). So all of these are
+  treated as don't-know: `I don't know`, `i dont know`, `dont know`, `Don't know!`, `I DONT KNOW`,
+  `idk`, `IDK`, `idk?`, `idontknow`, `?`, `??`, `???`.
+  `dunno` and `idk` misspellings such as `i d k` are **not** matched.
 
 ### 6.2 Answer validation
 
@@ -284,11 +285,11 @@ One row per item per participant — 12 in Part 1 and 12 in Part 2, so 24 rows p
 
 ## 7. Post-task measures (steps 4 and 6)
 
-Rendered by `renderPostTask` (`assets/app.js:627-645`); item sets at `assets/app.js:79-137`; read and
-written by `readPostTask(part)` / `writePostTask(saved, part)` (`assets/app.js:647-676`). Both
+Rendered by `renderPostTask` (`assets/app.js:629-647`); item sets at `assets/app.js:79-133`; read and
+written by `readPostTask(part)` / `writePostTask(saved, part)` (`assets/app.js:649-678`). Both
 post-tasks reuse the pre-task survey row widget, so the same `.survey-item` validation applies; the
-Part 1 post-task's free-text item is the one difference — it renders a lone text box
-(`postTaskTextRow`, `assets/app.js:603-621`) and is complete once it holds any text.
+free-text "Why?" item is the one difference — it renders a lone text box
+(`postTaskTextRow`, `assets/app.js:605-623`) and is complete once it holds any text.
 
 The first post-task sits **between** the two question parts, so its "How hard were the questions?"
 item refers to **Part 1 only** (§13.16). The second post-task closes the session.
@@ -314,23 +315,25 @@ required before Continue works.
 
 ### 7.2 Post-task after Part 2 (step 6)
 
-**With AI (`POST2_AI`, 5 items)** — order as shown:
+**With AI (`POST2_AI`, 6 items)** — order as shown:
 
-| id | Question | Options |
-| --- | --- | --- |
-| `pt_difficulty` | How hard were the questions? | Easy / Medium / Hard |
-| `pt_ai_right` | Do you think the AI's answers were right? | Never / Sometimes / Always |
-| `pt_idk_ok` | Is it OK to say "I don't know" in this game? | Not OK / A bit OK / Totally OK |
-| `pt_ai_use` | In your everyday life, how often do you use an AI that answers questions, like DeepSeek, Siri or ChatGPT? | Never / Once or twice / Sometimes / Often |
-| `pt_believe_ai` | If you didn't know the answer to a question and an AI told you one, would you believe it? | No / Maybe / Probably / Yes |
+| id | Question | Type | Options |
+| --- | --- | --- | --- |
+| `pt_difficulty` | How hard were the questions? | 1 of 3 | Easy / Medium / Hard |
+| `pt_ai_right` | Do you think the AI's answers were right? | 1 of 3 | Never / Sometimes / Always |
+| `pt_idk_ok` | Is it OK to say "I don't know" in this game? | 1 of 3 | Not OK / A bit OK / Totally OK |
+| `pt_why` | Why? | free text | — |
+| `pt_ai_use` | In your everyday life, how often do you use an AI that answers questions, like DeepSeek, Siri or ChatGPT? | 1 of 4 | Never / Once or twice / Sometimes / Often |
+| `pt_believe_ai` | If you didn't know the answer to a question and an AI told you one, would you believe it? | 1 of 4 | No / Maybe / Probably / Yes |
 
-This is the only post-task that asks about the AI: `pt_ai_right`, `pt_ai_use` and `pt_believe_ai` all
-live here (§13.21).
+This is the only post-task that asks about the AI, so `pt_ai_right`, `pt_ai_use` and `pt_believe_ai`
+are put to the with-AI condition only (§13.19, §13.21).
 
-**Without AI (`POST2_NOAI`, 2 items)** — `pt_difficulty` then `pt_ai_right`. Note that the second item
-asks about the AI even in the control condition, where no AI was present; see §13.19.
+**Without AI (`POST2_NOAI`, 3 items)** — `pt_difficulty`, `pt_idk_ok`, then `pt_why`. The control
+condition is therefore never asked about an AI at any point in the study (§13.19).
 
-Every post-task item is required before the child can leave its step.
+Both Part 2 sets place `pt_why` immediately after `pt_idk_ok`, so as in Part 1 the child explains that
+answer. Every item in every post-task is required before the child can leave its step.
 
 ---
 
@@ -399,7 +402,7 @@ The in-progress state is written on every change and on `beforeunload`, and clea
 header **Reset** button wipes all of it and reloads a blank form for the next participant
 (`assets/ai.js:209-222`, `assets/noai.js:75-88`).
 
-### 10.2 Submitted session object (`buildSession`, `assets/app.js:1040-1071`)
+### 10.2 Submitted session object (`buildSession`, `assets/app.js:1042-1073`)
 
 ```json
 {
@@ -410,7 +413,7 @@ header **Reset** button wipes all of it and reloads a blank form for the next pa
   "demographics": { "participant_id": "ai-20261109-090000-k3x9", "age": "9", "grade": "4", "gender": "Female" },
   "survey":   { "facts_good": "...", "ius_1": 4, "ai_heard": "Yes", "ai_tools": ["Siri"], "ai_tools_other": "" },
   "posttask": { "pt_difficulty": "Medium", "pt_idk_ok": "A bit OK", "pt_why": "because guessing is fine" },
-  "posttask2": { "pt_difficulty": "Hard", "pt_ai_right": "Always" },
+  "posttask2": { "pt_difficulty": "Hard", "pt_ai_right": "Sometimes", "pt_idk_ok": "Totally OK", "pt_why": "because the AI helps", "pt_ai_use": "Sometimes", "pt_believe_ai": "Maybe" },
   "answers": [
     { "trial": 1, "id": "H1", "level": "Hard", "question": "What colour is a polar bear's skin underneath its fur?",
       "answer": "White", "correct_answer": "Black", "answered": true, "confidence": 80 },
@@ -458,9 +461,9 @@ Practical notes for analysis:
 
 ### 12.1 Local downloads (finish screen)
 
-Filenames: `study_<mode>_<participant_id>_<YYYYMMDD_HHMMSS>.<ext>` (`assets/app.js:884-887`).
+Filenames: `study_<mode>_<participant_id>_<YYYYMMDD_HHMMSS>.<ext>` (`assets/app.js:886-889`).
 
-**XLSX (default)** — sheets (`assets/app.js:993-1038`):
+**XLSX (default)** — sheets (`assets/app.js:995-1040`):
 
 | Sheet | Contents |
 | --- | --- |
@@ -469,7 +472,7 @@ Filenames: `study_<mode>_<participant_id>_<YYYYMMDD_HHMMSS>.<ext>` (`assets/app.
 | `Survey` | pre-task survey, then the `Post-task` block (Part 1) and the `Post-task 2` block (Part 2), each with numeric scores where applicable |
 | `Chat` | `#, Role, Message, Time` — present only when a chat exists |
 
-**CSV** fallback (`assets/app.js:964-986`) contains the same blocks in one file with a UTF-8 BOM.
+**CSV** fallback (`assets/app.js:966-988`) contains the same blocks in one file with a UTF-8 BOM.
 **JSON** export is the verbatim session object and is the safest archive format — it is the only
 export that preserves the nested `answers`, `survey` and `chat` structures unambiguously.
 
@@ -489,11 +492,11 @@ forgets to download it before the next participant.
   `participant_id`, value = the session JSON (§10.2). Re-submitting the same `participant_id`
   overwrites the row rather than adding a second one.
 - **Request:** `POST` with `{ "participant_id": "...", "session": { … } }`, sent with
-  `Content-Type: application/json` and `keepalive: true` (`assets/app.js:1073-1085`) so the request
+  `Content-Type: application/json` and `keepalive: true` (`assets/app.js:1075-1087`) so the request
   still lands if the child closes the page right after submitting.
 - **Failure does not block the child.** The finish screen reports "Saved to the study database
   (`<id>`)" or turns the line into a warning and reveals a **Try the cloud save again** button; the
-  download buttons stay available in either case (`assets/app.js:1087-1188`).
+  download buttons stay available in either case (`assets/app.js:1089-1190`).
 - **Size guard:** the function returns `413` for a session over 200 KB, far above the ~14 KB a
   60-message chat produces. Vercel also caps a request body at ~4.5 MB.
 - **Environment variables** (Vercel → Project → Settings → Environment Variables):
@@ -600,13 +603,13 @@ both, into Excel. Everything runs in the browser — nothing is uploaded.
     which part a message belongs to.
 18. **`trial` restarts in Part 2**, since it is the position within a part. Analyse on `id` (or on the
     `id` prefix) and `level`, never on `trial` alone across the whole 24-row answer set.
-19. **The control condition is asked about an AI that was never present.** The without-AI Part 2
-   post-task (`POST2_NOAI`, §7.2) keeps "Do you think the AI's answers were right?" so both
-   conditions answer the same two closing items. In the control condition the child had no AI to
-   judge, so this item measures an imagined or assumed AI rather than an experienced one, and its
-   `pt_ai_right` answers are not comparable to the with-AI condition's. (Note that the *pre-task* AI
-   block is with-AI only — §5.4 — so this is the only point at which the control condition is asked
-   about an AI; the first post-task no longer asks either condition about one, §13.21.)
+19. **The control condition is never asked about an AI.** Its only post-task items are "How hard were
+   the questions?" and whether "I don't know" is acceptable (§7.2); the pre-task AI block is with-AI
+   only (§5.4), and the first post-task carries no AI item either (§13.21). So `pt_ai_right`,
+   `pt_ai_use` and `pt_believe_ai` have no value at all for `noai.html` — those columns are blank in
+   the merged workbook, and the AI-belief measures exist only for the with-AI condition. (Earlier the
+   control was asked "Do you think the AI's answers were right?" after Part 2, which measured an
+   imagined rather than an experienced AI; that item has been removed.)
 20. **Part 1 is no longer a mixed-difficulty set.** It is now the twelve hard items only, so `level`
    is the constant `Hard` for every Part 1 row and item difficulty can no longer be used as a
    within-Part-1 predictor. Two knock-on effects: the game intro still tells the child "Some are easy
@@ -618,15 +621,21 @@ both, into Excel. Everything runs in the browser — nothing is uploaded.
    the questions were, whether "I don't know" is acceptable, and *why* (free text, and required —
    the child cannot continue with it blank). Two consequences to weigh before analysing:
    - The earlier Part 1 post-task carried the AI-belief items. They now appear only in the second
-     post-task (`POST2_AI`, §7.2), so `pt_ai_right`, `pt_ai_use` and `pt_believe_ai` are measured
-     **after Part 2** rather than after Part 1, and only once. `pt_ai_trust` ("How often do you think
-     an AI's answer is right?") is no longer asked at all — it was dropped from the item bank
-     (`POST_COMMON`) and from `Questions.xlsx`.
+     post-task (`POST2_AI`, §7.2) and only in the with-AI condition, so `pt_ai_right`, `pt_ai_use`
+     and `pt_believe_ai` are measured **after Part 2** rather than after Part 1, and only once.
+     `pt_ai_trust` ("How often do you think an AI's answer is right?") is no longer asked at all — it
+     was dropped from the item bank (`POST_COMMON`) and from `Questions.xlsx`.
    - The two conditions' step-4 answers are directly comparable, since the wording, options and order
      are the same. Any earlier plan that contrasted a 6-item with-AI set against a 5-item
      without-AI set no longer applies.
-   `pt_why` is free text, so it needs coding before it can be used quantitatively; the merge tool
-   passes it through verbatim.
+22. **"Why?" is asked twice — after each part — and each one is free text.** `pt_why` sits at step 4
+   in both conditions and again at step 6 in both conditions, so a child writes two reasons: one
+   about Part 1 and one about Part 2. Both are required, and the two are only distinguishable by
+   which post-task block they came from (§12.1) — in the merged workbook the step-6 one is the
+   `_2`-suffixed column (§12.4). Like any free text they need coding before quantitative use; the
+   merge tool passes them through verbatim. Note also that `pt_difficulty` and `pt_idk_ok` are
+   likewise asked at both steps in both conditions, so a Part 1 → Part 2 change score can be derived
+   for each.
 
 ---
 
@@ -636,17 +645,17 @@ both, into Excel. Everything runs in the browser — nothing is uploaded.
 | --- | --- |
 | The 12 Part 1 quiz items | `assets/app.js:7-20` **and** `Questions.xlsx` (`Items` sheet) |
 | The 12 Part 2 quiz items | `assets/app.js:25-38` **and** `Questions.xlsx` (`Items Part 2` sheet) |
-| Question wording/options for self-efficacy | `assets/app.js:140-162` |
-| IUS statements / scale labels | `assets/app.js:164-185` |
-| AI-only pre-task items | `assets/app.js:188-202` |
-| Post-task items (both post-tasks, all three sets) | `assets/app.js:79-137` **and** `Questions.xlsx` (`Post-task items` sheet) |
-| Which post-task item set each condition/step gets | `postTaskQuestions`, `assets/app.js:134-137` |
-| The `post-` / `post2-` radio prefix that keeps the two post-tasks apart | `postTaskPrefix`, `assets/app.js:594-596` |
-| The Part 1 post-task's "Why?" text box | `postTaskTextRow`, `assets/app.js:603-621` |
-| Demographics fields | `assets/app.js:204-209` |
+| Question wording/options for self-efficacy | `assets/app.js:142-164` |
+| IUS statements / scale labels | `assets/app.js:166-187` |
+| AI-only pre-task items | `assets/app.js:190-204` |
+| Post-task items (both post-tasks, all three sets) | `assets/app.js:79-133` **and** `Questions.xlsx` (`Post-task items` sheet) |
+| Which post-task item set each condition/step gets | `postTaskQuestions`, `assets/app.js:136-139` |
+| The `post-` / `post2-` radio prefix that keeps the two post-tasks apart | `postTaskPrefix`, `assets/app.js:596-598` |
+| The post-tasks' "Why?" text boxes | `postTaskTextRow`, `assets/app.js:605-623` |
+| Demographics fields | `assets/app.js:206-211` |
 | WrongBot persona / rules | `assets/ai.js:12-27` |
 | The banned-answer list | `assets/ai.js:342-351` |
-| Confidence slider range/step/labels | `assets/app.js:687-701` |
+| Confidence slider range/step/labels | `assets/app.js:689-703` |
 | Model, temperature, max tokens, streaming | `api/chat.js:58-65` and the Vercel env vars |
 | API endpoint used by the page | `assets/ai.js:13` |
 | Switching the cloud backup off | `SAVE_ENDPOINT` in `assets/app.js:75` (set to `''`) |
@@ -699,13 +708,15 @@ both, into Excel. Everything runs in the browser — nothing is uploaded.
 - **Second post-task added after Part 2.** A sixth step ("Well done! Let's see how you felt!") now
   closes the session in both conditions (`STEPS`, `assets/app.js:70`), so the header reads "Step X of
   6" and "Finish & submit" moved to step 6. It reuses the same item bank as the first post-task
-  (§7.2): 5 items in the AI condition (`POST2_AI`) and 2 in the control (`POST2_NOAI`). Because the
+  (§7.2): 6 items in the AI condition (`POST2_AI`) and 3 in the control (`POST2_NOAI`) as the sets
+  stand now — 5 and 2 when first added; the later "Why?" and dropped-AI-item changes are logged
+  below. Because the
   item ids are shared, the second post-task names its radios `post2-<id>` and reads/writes through
   `#posttask2`, so the two steps stay independent radio groups (`postTaskPrefix` /
-  `postTaskContainer`, `assets/app.js:594-601`). The session object gained a `posttask2` block
+  `postTaskContainer`, `assets/app.js:596-603`). The session object gained a `posttask2` block
   (`buildSession`, 8th argument), the `Survey` sheet exports a second `Post-task 2` block (§12.1), and
   the merge tool suffixes the second post-task's columns with `_2` to avoid clashing with the first
-  (§12.4). The control condition is asked about an AI it never saw (§13.19).
+  (§12.4).
 - **`Questions.xlsx` caught up with the code.** Two new sheets: `Items Part 2` (the 12 Part 2 items)
   and `Post-task items` (the six post-task items, each showing its position in each set,
   `POST1` / `POST2_AI` / `POST2_NOAI`). The five pre-existing sheets were left
@@ -731,3 +742,25 @@ both, into Excel. Everything runs in the browser — nothing is uploaded.
   longer asked at all and the remaining AI items are asked only after Part 2 (§13.21). `Questions.xlsx`
   `Post-task items` was rebuilt accordingly (`A1:F8`; the two step-4 columns became one), and the
   workbook's other sheets are unchanged.
+- **More ways to say "I don't know".** `isDontKnow` (`assets/app.js:683-686`) now also accepts `idk`
+  (with or without a trailing `?`) and a string of nothing but question marks (`?`, `??`, `???`),
+  alongside the existing `I don't know` / `dont know` / `idontknow`. Those answers hide the confidence
+  slider and are exempt from the rating requirement, exactly as before (§6.1). The game intro on both
+  pages now names the extras: `please write "I don't know" (you can also write "idk", "idontknow" or
+  "??")`.
+- **The control condition's Part 2 post-task lost its AI item.** `POST2_NOAI` (`assets/app.js:129-133`)
+  was "How hard were the questions?" then "Is it OK to say 'I don't know' in this game?" — the same
+  two questions in the same order for every child in the control group. `pt_ai_right` stays in the
+  with-AI set (`POST2_AI`), so the AI-belief items are now put only to the condition that had an AI
+  (§7.2, §13.19). Effect: `noai.html` collects no AI-belief value anywhere in the study, and the
+  control's step-6 `pt_difficulty` / `pt_idk_ok` now give a comparable Part 2 read in both conditions
+  (both are asked after Part 1 as well, so they are the same two items at steps 4 and 6 —
+  distinguishable in the exports/merged workbook by the `_2` column suffix).
+- **Both Part 2 post-tasks gained a "Why?" box after the "I don't know" item.** `POST_COMMON.why` now
+  sits in `POST2_AI` (position 4, between `pt_idk_ok` and `pt_ai_use`) and in `POST2_NOAI`
+  (position 3, last), so the with-AI set is 6 items and the control set 3. It reuses the same
+  `postTaskTextRow` widget and the same required-if-blank rule as the Part 1 item (§7.2), and
+  `readPostTask('part2')` / `writePostTask(saved, 'part2')` already pick text inputs up from
+  `#posttask2`, so no rendering change was needed. Effect: every child now writes two free-text
+  reasons — one per part — which the merged workbook keeps apart as `pt_why` and `pt_why_2`
+  (§12.4, §13.22).

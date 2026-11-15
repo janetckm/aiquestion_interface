@@ -121,13 +121,15 @@ window.App = (function () {
     POST_COMMON.difficulty,
     POST_COMMON.ai_right,
     POST_COMMON.idk_ok,
+    POST_COMMON.why,
     POST_COMMON.ai_use,
     POST_COMMON.believe
   ];
 
   var POST2_NOAI = [
     POST_COMMON.difficulty,
-    POST_COMMON.ai_right
+    POST_COMMON.idk_ok,
+    POST_COMMON.why
   ];
 
   /* `part` is 'part2' for the post-task that follows Part 2; anything else is the Part 1 one. */
@@ -679,8 +681,8 @@ window.App = (function () {
 
   /* "I don't know" (however it is typed) means there is no answer to be sure about. */
   function isDontKnow(text) {
-    var flat = String(text).toLowerCase().replace(/[^a-z]/g, '');
-    return flat === 'idontknow' || flat === 'dontknow';
+    var raw = String(text).toLowerCase().replace(/[^a-z?]/g, '');
+    return /^\?+$/.test(raw) || /^(i)?dontknow$|^idk$/.test(raw.replace(/\?/g, ''));
   }
 
   /* The confidence slider only appears once there is a real answer on screen. */
