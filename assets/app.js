@@ -26,7 +26,7 @@ window.App = (function () {
     { id: 'P1', level: 'Part 2', question: 'What do pandas mostly eat?', answer: 'Bamboo', wrong: 'Pandas mostly eat eucalyptus leaves.' },
     { id: 'P2', level: 'Part 2', question: 'How many sides does a triangle have?', answer: '3', wrong: 'A triangle has four sides.' },
     { id: 'P3', level: 'Part 2', question: 'What are diamonds made of?', answer: 'Carbon', wrong: 'Diamonds are made of quartz.' },
-    { id: 'P4', level: 'Part 2', question: 'How many minutes in one hour?', answer: '60', wrong: 'There are 90 minutes in one hour.' },
+    { id: 'P4', level: 'Part 2', question: 'How many days in 2024?', answer: '366', wrong: 'There are 365 days in 2024.' },
     { id: 'P5', level: 'Part 2', question: 'What is the biggest planet in our solar system?', answer: 'Jupiter', wrong: 'The biggest planet in our solar system is Saturn.' },
     { id: 'P6', level: 'Part 2', question: 'How many wings does a butterfly have?', answer: '4', wrong: 'A butterfly has two wings.' },
     { id: 'P7', level: 'Part 2', question: 'What is the name of the star closest to Earth?', answer: 'The Sun', wrong: 'The star closest to Earth is Sirius.' },

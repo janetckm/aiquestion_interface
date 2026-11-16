@@ -170,7 +170,7 @@ is claimed for these items.
 | P1 | Part 2 | What do pandas mostly eat? | Bamboo |
 | P2 | Part 2 | How many sides does a triangle have? | 3 |
 | P3 | Part 2 | What are diamonds made of? | Carbon |
-| P4 | Part 2 | How many minutes in one hour? | 60 |
+| P4 | Part 2 | How many days in 2024? | 366 |
 | P5 | Part 2 | What is the biggest planet in our solar system? | Jupiter |
 | P6 | Part 2 | How many wings does a butterfly have? | 4 |
 | P7 | Part 2 | What is the name of the star closest to Earth? | The Sun |
@@ -820,3 +820,9 @@ both, into Excel. Everything runs in the browser — nothing is uploaded.
   time, never substitute a different wrong answer" instruction, replacing the old ban list of correct
   answers. `Questions.xlsx` `Items Part 2` gained the same column (`A1:E13`) to mirror it. Phrasing and
   length still vary run to run; only the claim is fixed (§8, §13.23).
+- **Part 2's P4 item replaced.** "How many minutes in one hour?" (60) became "How many days in 2024?"
+  (366) — a leap year, so the item now tests calendar reasoning rather than a memorised unit
+  conversion. Its pinned wrong answer is "There are 365 days in 2024." Changed in `assets/app.js`
+  (`PART2_QUESTIONS`) and in `Questions.xlsx` `Items Part 2` row 5, in step with each other (§4). The
+  item id `P4` is unchanged, so nothing downstream — shuffling, validation, export rows, the merged
+  workbook's columns — is affected.
