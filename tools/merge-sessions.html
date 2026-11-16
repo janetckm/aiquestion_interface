@@ -82,6 +82,7 @@
 
   var sessions = [];
   var unique = [];
+  var fileNames = [];
 
   function addFile(name, data) {
     var list = Array.isArray(data) ? data : [data];
@@ -120,7 +121,14 @@
     });
   }
 
-  /* Same participant twice (e.g. an old export plus a newer one) keeps the newest record. */
+  /* Two records are the same sitting when the code, the start time and the condition all match.
+     Re-dropping an export therefore still collapses to one copy, while two children who were
+     given the same code — who started at different moments — are both kept. */
+  function recordKey(s) {
+    return (s.participant_id || s.name || 'no id') + '|' +
+      (s.started_at || s.submitted_at || '') + '|' + (s.mode || '');
+  }
+
   function finish() {
     if (!sessions.length) {
       log('No sessions found.');
@@ -135,7 +143,7 @@
     var duplicates = 0;
 
     sessions.forEach(function (s) {
-      var key = s.participant_id || (s.mode + '|' + s.submitted_at + '|' + (s.name || ''));
+      var key = recordKey(s);
       if (byKey[key]) duplicates += 1;
       byKey[key] = s;
     });
@@ -145,7 +153,18 @@
       return String(a.submitted_at).localeCompare(String(b.submitted_at));
     });
 
-    if (duplicates) log('Replaced ' + duplicates + ' duplicate record(s) with the newest copy.');
+    if (duplicates) log('Replaced ' + duplicates + ' record(s) that appeared twice with the newest copy.');
+
+    /* Two children can share a code, so a repeated id gets the submission time in its filename
+       and its dropdown label — otherwise the two downloads would overwrite each other. */
+    var idCounts = {};
+    unique.forEach(function (s) {
+      var id = String(s.participant_id || '');
+      idCounts[id] = (idCounts[id] || 0) + 1;
+    });
+    fileNames = unique.map(function (s, i) {
+      return fileNameFor(s, i, (idCounts[String(s.participant_id || '')] || 0) > 1);
+    });
 
     var withAI = unique.filter(function (s) { return s.mode === 'ai'; }).length;
     log('Merged ' + unique.length + ' session(s): ' + withAI + ' with AI, ' +
@@ -161,29 +180,39 @@
     return (s.name || s.participant_id || 'no id') + '  —  ' + (s.mode || '?');
   }
 
-  function fillParticipants() {
-    var counts = {};
-    unique.forEach(function (s) {
-      var label = labelFor(s);
-      counts[label] = (counts[label] || 0) + 1;
-    });
+  var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
+  function pad(n) {
+    return (n < 10 ? '0' : '') + n;
+  }
+
+  function stamp(iso) {
+    var d = new Date(iso);
+    if (isNaN(d)) return String(iso || 'unknown');
+    return pad(d.getDate()) + ' ' + MONTHS[d.getMonth()] + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+
+  /* Every option carries its submission time: two children can be handed the same code, and
+     "tt — ai · 13:40" against "tt — ai · 14:00" is what tells them apart. */
+  function fillParticipants() {
     pidSelect.innerHTML = '';
     unique.forEach(function (s, i) {
-      var label = labelFor(s);
-      /* Two children can share a name, so disambiguate with the code when they do. */
-      if (counts[label] > 1) label += '  (' + (s.participant_id || 'no id') + ')';
-
       var opt = document.createElement('option');
       opt.value = String(i);
-      opt.textContent = label;
+      opt.textContent = labelFor(s) + '  ·  ' + stamp(s.submitted_at);
       pidSelect.appendChild(opt);
     });
   }
 
-  /* Files stay keyed by the participant code, which is unique even when names are not. */
-  function fileNameFor(s, i) {
+  /* Files stay keyed by the participant code. A repeated code also carries the submission time,
+     so two per-participant downloads cannot overwrite each other. */
+  function fileNameFor(s, i, repeated) {
     var id = String(s.participant_id || ('participant-' + (i + 1))).replace(/[^A-Za-z0-9._-]/g, '_');
+    if (repeated) {
+      var d = new Date(s.submitted_at);
+      id += '_' + (isNaN(d) ? 'unknown' : d.getFullYear() + pad(d.getMonth() + 1) +
+        pad(d.getDate()) + '-' + pad(d.getHours()) + pad(d.getMinutes()));
+    }
     return id + '.xlsx';
   }
 
@@ -465,7 +494,7 @@
     var i = Number(pidSelect.value);
     var s = unique[i];
     if (!s) return;
-    var name = fileNameFor(s, i);
+    var name = fileNames[i] || fileNameFor(s, i, false);
     XLSX.writeFile(buildWorkbook([s]), name);
     log('Option 2: wrote ' + name + '.');
   });
@@ -473,7 +502,7 @@
   btnZip.addEventListener('click', function () {
     var files = unique.map(function (s, i) {
       var bytes = new Uint8Array(XLSX.write(buildWorkbook([s]), { bookType: 'xlsx', type: 'array' }));
-      return { name: fileNameFor(s, i), data: bytes };
+      return { name: fileNames[i] || fileNameFor(s, i, false), data: bytes };
     });
     saveBlob(makeZip(files), 'study_sessions_by_participant.zip');
     log('Option 3: wrote study_sessions_by_participant.zip (' + files.length + ' workbook(s)).');

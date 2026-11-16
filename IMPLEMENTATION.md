@@ -562,15 +562,18 @@ endpoint, port and password from the Upstash dashboard (Upstash requires TLS).
 A self-contained page that turns the cloud export, any number of per-participant `.json` files, or
 both, into Excel. Everything runs in the browser — nothing is uploaded.
 
-- Records are de-duplicated on `participant_id` with the newest `submitted_at` winning, so a whole
-  batch can be re-dropped safely. Genuine duplicates now only arise from local files: the cloud id is
-  made unique before it is ever stored (§12.2), so two children who shared a code arrive here as
-  `01` and `01-b` and are both kept. Re-dropping the same cloud export still collapses to one copy of
-  each, which is the point of the rule.
+- Records are de-duplicated on **code + `started_at` + mode**, newest winning, so re-dropping an
+  export (or an old export plus a newer one) collapses to one copy of each sitting — but two children
+  who were handed the same code are **both kept**, because their `started_at` differs. Keying on
+  `participant_id` alone used to merge those two into one row and silently drop a child.
+  When a code repeats, the dropdown label and the per-participant filename both carry the submission
+  time (`tt — ai · 21:40` → `tt_20261116-2140.xlsx`), so the label is unambiguous and Option 2/3
+  cannot overwrite a download named after the other record.
 - Three outputs: **(1)** one combined workbook, **(2)** one chosen participant (a dropdown listing the
-  loaded records by `participant_id`, with the condition shown alongside), **(3)** one workbook per
-  participant, bundled into a single `.zip` written by the page itself.
-- Per-participant files are named `<participant_id>.xlsx`.
+  loaded records by code, condition and submission time), **(3)** one workbook per participant,
+  bundled into a single `.zip` written by the page itself.
+- Per-participant files are named `<participant_id>.xlsx`, plus `_<yyyyMMdd-HHmm>` when the code
+  repeats (§12.4).
 - The page loads `../assets/app.js` and reuses `App.surveyRows`, so survey question text and scale
   labels are never duplicated and always match the live instrument.
 
@@ -624,10 +627,12 @@ both, into Excel. Everything runs in the browser — nothing is uploaded.
       `started_at` + `mode`, so the "try again" button cannot create a twin. A child deliberately
       re-running the study is a *new* run and therefore creates `01-b` — there is no way to correct a
       stored record in place; edit or delete it in Redis/the merged workbook instead.
-    - Suffixing is decided by the **cloud** copy. If `SAVE_ENDPOINT` is blank or the POST fails, no
-      suffix is ever assigned, the two local `.json` files both carry `01`, and the merge tool's
-      keep-the-newest rule (§12.4) still collapses them to one row. So the protection depends on the
-      cloud save succeeding.
+    - The suffix lives **only in the Redis field name**. The stored record still carries the code the
+      browser sent, because the POST body is written verbatim, and the export reads the hash with
+      `HVALS`, which returns values without field names (§12.3). So an export of two children who
+      shared a code arrives as two records that both say `01`, and only the merge tool's time stamp
+      (label and filename, §12.4) tells them apart. Renaming the affected rows in Excel, or switching
+      the export to `HGETALL` and the write to stamp the resolved id, would close this properly.
 12. **The cloud path depends on free tiers.** Storage is Upstash Redis (free: 256 MB, 500K commands
     per month) called from a Vercel function. Vercel's Hobby plan is licensed for personal,
     non-commercial use only, which is worth confirming before a funded or institutional deployment.
@@ -875,6 +880,22 @@ both, into Excel. Everything runs in the browser — nothing is uploaded.
   §13.11). Two limits are recorded there: the protection depends on the cloud save succeeding (a
   file downloaded before the cloud save resolved can still carry a duplicate code), and there is no
   way to correct a stored record in place. See also the fixed bug below.
+- **Fixed: the merge tool dropped a child who shared a participant code.** With the suffixing in
+  §12.2 live, two children handed the same code are stored in Redis under different fields — but the
+  field name is where the suffix lives, and the export reads the hash with `HVALS`, which returns
+  values only. So `tt` and `tt-b` both arrived at the merge tool as records saying `tt`, which
+  de-duplicated on `participant_id` and kept the newest — one child's data silently collapsed away
+  (the tool did log "Replaced 1 duplicate record(s)", which is easy to miss).
+  `tools/merge-sessions.html` now keys de-duplication on **code + `started_at` + mode**, so only a
+  re-dropped sitting collapses and two children with one code are both kept, and it adds the
+  submission time to the dropdown label and to the per-participant filename whenever a code repeats
+  (`tt — ai · 21:40` → `tt_20261116-2140.xlsx`), so Option 2/3 cannot overwrite themselves
+  (§12.4, §13.11). Verified against the real `study_sessions (2).json`: 4 records in, 4 options out,
+  including both `tt` entries, and re-dropping the same file still collapses to 4.
+  **Deliberately front-end only** — the matching `api/save.js` fix (stamp the resolved id into the
+  stored JSON, and export via `HGETALL` so old records self-repair) was left undone, so any export
+  made before this change still shows a repeated code and needs the rows renamed by hand. The tool
+  change needs only a GitHub Pages push; nothing was redeployed.
 - **Fixed: the finish screen printed "Participant —".** `showSubmitOverlay` still read `session.name`,
   a field removed when the Name field became Participant ID (§5.1), so the sub-heading showed a dash
   for every participant. It now reads `session.participant_id` and refreshes when a suffix is adopted
