@@ -1098,7 +1098,13 @@ window.App = (function () {
 
     var sub = document.createElement('p');
     sub.className = 'muted';
-    sub.textContent = 'Participant ' + (session.name || '—') + ' · ' + (session.mode === 'ai' ? 'With AI' : 'Without AI');
+
+    function updateSub() {
+      sub.textContent = 'Participant ' + (session.participant_id || '—') + ' · ' +
+        (session.mode === 'ai' ? 'With AI' : 'Without AI');
+    }
+
+    updateSub();
 
     var summary = document.createElement('div');
     summary.className = 'summary-box';
@@ -1121,10 +1127,26 @@ window.App = (function () {
       btnRetry.hidden = state !== 'warn';
     }
 
+    /* The database keeps both records when two children share a code: the first
+       keeps it, the newcomer is stored under a suffixed id (01, 01-b, 01-c …).
+       Adopt whatever id it settled on, so the downloads and the saved copy of
+       the session carry the same id as the stored record. */
+    function adoptStoredId(info) {
+      if (!info || !info.participant_id || info.participant_id === session.participant_id) return;
+      session.participant_id = info.participant_id;
+      if (session.demographics) session.demographics.participant_id = info.participant_id;
+      App.storageSet('study.last.' + session.mode, session);
+      updateSub();
+    }
+
     function attemptCloudSave() {
       setCloudState('busy', 'Saving to the study database…');
       saveSession(session).then(function (info) {
-        setCloudState('ok', 'Saved to the study database (' + info.participant_id + ').');
+        adoptStoredId(info);
+        setCloudState('ok', info.suffixed
+          ? 'Code ' + info.requested_id + ' was already used, so this record was saved as ' +
+            info.participant_id + '.'
+          : 'Saved to the study database (' + info.participant_id + ').');
       }).catch(function () {
         setCloudState('warn', 'Could not save to the study database — download a copy below, then try again.');
       });

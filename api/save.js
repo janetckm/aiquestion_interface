@@ -10,7 +10,11 @@
  * The frontend only ever sees this function's URL, never the Redis token.
  *
  * Storage: one Redis hash, field = participant_id, value = the session JSON.
- * Re-submitting the same participant overwrites the row instead of duplicating it.
+ * Two children can be handed the same code, so a clash never overwrites: the
+ * first record keeps the code and the newcomer is stored under the next free
+ * suffixed id (01, 01-b, 01-c …). A re-submission of the same sitting — same
+ * started_at and mode, e.g. the "try the cloud save again" button — overwrites
+ * its own record instead of creating a twin.
  */
 
 const REDIS_URL = (process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL || '')
@@ -50,6 +54,56 @@ async function redis(commands) {
   if (failed) throw new Error('Redis command failed: ' + failed.error);
 
   return data.map((entry) => entry.result);
+}
+
+/* Suffixes tried when a code is already taken: 01-b, 01-c, … 01-z. */
+const SUFFIX_LETTERS = 'bcdefghijklmnopqrstuvwxyz';
+
+/* The same sitting re-submitting: only true when the stored record is demonstrably
+   the same run, so a genuine second child with the same code is never mistaken for
+   a retry. Needs both a started_at and a mode to match. */
+function isSameRun(existing, session) {
+  return !!(existing && session.started_at &&
+    existing.started_at === session.started_at && existing.mode === session.mode);
+}
+
+/* Write under an id nobody had claimed. HSETNX is atomic, so two devices submitting
+   the same code at the same instant cannot both take the same slot. */
+async function claimId(candidate, id, json) {
+  const [claimed] = await redis([['HSETNX', STUDY_KEY, candidate, json]]);
+  if (claimed !== 1) return null;                 // someone got there first
+  const [, stored] = await redis([['HLEN', STUDY_KEY]]);
+  return {
+    id: candidate,
+    stored: stored,
+    suffixed: candidate !== id,
+    overwritten: false
+  };
+}
+
+async function storeSession(id, session, json) {
+  const [existingRaw] = await redis([['HGET', STUDY_KEY, id]]);
+
+  if (!existingRaw) {
+    const written = await claimId(id, id, json);
+    if (written) return written;                  // the id was free
+  } else {
+    let existing = null;
+    try { existing = JSON.parse(existingRaw); } catch (e) { existing = null; }
+
+    if (isSameRun(existing, session)) {
+      const [, stored] = await redis([['HSET', STUDY_KEY, id, json], ['HLEN', STUDY_KEY]]);
+      return { id: id, stored: stored, suffixed: false, overwritten: true };
+    }
+  }
+
+  // The code belongs to another child: keep both, give the newcomer a suffix.
+  for (let i = 0; i < SUFFIX_LETTERS.length; i++) {
+    const written = await claimId(id + '-' + SUFFIX_LETTERS[i], id, json);
+    if (written) return written;
+  }
+
+  throw new Error('Too many records already share the code "' + id + '"');
 }
 
 async function exportAll(req, res) {
@@ -115,11 +169,15 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const [, stored] = await redis([
-      ['HSET', STUDY_KEY, String(id), json],
-      ['HLEN', STUDY_KEY]
-    ]);
-    return res.status(200).json({ ok: true, participant_id: String(id), stored: stored });
+    const result = await storeSession(String(id), session, json);
+    return res.status(200).json({
+      ok: true,
+      participant_id: result.id,
+      requested_id: String(id),
+      suffixed: result.suffixed,
+      overwritten: result.overwritten,
+      stored: result.stored
+    });
   } catch (err) {
     return res.status(502).json({ error: 'Could not store the session: ' + err.message });
   }

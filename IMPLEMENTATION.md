@@ -506,8 +506,22 @@ forgets to download it before the next participant.
   (`SAVE_ENDPOINT`). Setting that constant to `''` switches the cloud copy off and leaves the local
   downloads working.
 - **Storage:** a single Redis hash, key `study:sessions` (override with `STUDY_REDIS_KEY`), field =
-  `participant_id`, value = the session JSON (§10.2). Re-submitting the same `participant_id`
-  overwrites the row rather than adding a second one.
+  `participant_id`, value = the session JSON (§10.2).
+- **A repeated code keeps both records.** Two children can be handed the same code, so a clash never
+  overwrites: the first submission keeps the code and the newcomer is stored under the next free
+  suffixed id — `01`, then `01-b`, then `01-c`, up to `01-z` (`SUFFIX_LETTERS`,
+  `storeSession`/`claimId`). The suffix is claimed with `HSETNX`, which is atomic, so two devices
+  submitting the same code at the same instant cannot take the same slot. Requests 27 and beyond for
+  one code fail with `502` rather than looping.
+  The **only** case that still overwrites is a re-submission of the *same* sitting: the stored record
+  must match on both `started_at` and `mode` (`isSameRun`). That makes the finish screen's
+  **Try the cloud save again** button idempotent instead of minting a phantom twin, while a genuine
+  second child — whose `started_at` differs — is never mistaken for a retry. A session with no
+  `started_at` is always treated as a new record, never as a retry.
+  The response carries `participant_id` (the id actually used), `requested_id`, and the flags
+  `suffixed` / `overwritten`; the page adopts the resolved id so the local downloads and the
+  `study.last.<mode>` copy match the stored record, and tells the researcher
+  "Code 01 was already used, so this record was saved as 01-b." (`assets/app.js:1089-1153`, §13.11).
 - **Request:** `POST` with `{ "participant_id": "...", "session": { … } }`, sent with
   `Content-Type: application/json` and `keepalive: true` (`assets/app.js:1075-1087`) so the request
   still lands if the child closes the page right after submitting.
@@ -549,7 +563,10 @@ A self-contained page that turns the cloud export, any number of per-participant
 both, into Excel. Everything runs in the browser — nothing is uploaded.
 
 - Records are de-duplicated on `participant_id` with the newest `submitted_at` winning, so a whole
-  batch can be re-dropped safely.
+  batch can be re-dropped safely. Genuine duplicates now only arise from local files: the cloud id is
+  made unique before it is ever stored (§12.2), so two children who shared a code arrive here as
+  `01` and `01-b` and are both kept. Re-dropping the same cloud export still collapses to one copy of
+  each, which is the point of the rule.
 - Three outputs: **(1)** one combined workbook, **(2)** one chosen participant (a dropdown listing the
   loaded records by `participant_id`, with the condition shown alongside), **(3)** one workbook per
   participant, bundled into a single `.zip` written by the page itself.
@@ -587,21 +604,37 @@ both, into Excel. Everything runs in the browser — nothing is uploaded.
    (`study.ai.state`, `study.noai.state`), not by participant. The **Reset** button must be pressed
    between participants; otherwise the next child inherits the previous child's in-progress state.
    (Submitted sessions are copied to `study.last.<mode>` and are not affected by Reset.)
+   Reset is also the only thing that clears `started_at` (`sessionStorage`, `assets/ai.js:36-37`,
+   `assets/ai.js:212`), and `started_at` is how the database recognises a re-submission of the same
+   sitting (§12.2). So a second child on an un-reset tab can carry the same `started_at` and `mode` as
+   the first, and be mistaken for that child resubmitting — which only actually costs data if they are
+   also given the same code. Treat Reset between participants as mandatory for this reason too.
 10. **No direct identifier is collected, but the cloud store is not anonymous.** Nobody types a name
     any more (§5.1), and no field of the session object holds one (§10.2). The Redis copy is still
     child data sitting on a third-party host, readable by anyone with the Redis credentials or the
     `EXPORT_TOKEN`, and `age` + `grade` + `gender` together are quasi-identifying. Exports saved
     before the name field was removed still contain the names they collected; those are legacy files
     and cannot be back-filled.
-11. **Participant IDs are only as unique as the typing.** The app generates nothing: whatever is typed
-    in step 1 becomes the ID (§5.1). Two submissions sharing an ID collapse into one Redis record (the
-    second overwrites the first) and one row in the merged workbook, so a repeated code silently loses
-    data.
+11. **A repeated participant ID no longer loses data — the record gains a suffix instead.** The app
+    still generates nothing: whatever is typed in step 1 becomes the ID (§5.1). Two children handed
+    the same code both survive, because the database keeps the first under the code and stores the
+    newcomer under `01-b`, `01-c` … (§12.2), and the page adopts that resolved id so the downloads
+    match what is stored. Two things remain worth watching:
+    - The **only** overwrite left is a re-submission of the same sitting, recognised by a matching
+      `started_at` + `mode`, so the "try again" button cannot create a twin. A child deliberately
+      re-running the study is a *new* run and therefore creates `01-b` — there is no way to correct a
+      stored record in place; edit or delete it in Redis/the merged workbook instead.
+    - Suffixing is decided by the **cloud** copy. If `SAVE_ENDPOINT` is blank or the POST fails, no
+      suffix is ever assigned, the two local `.json` files both carry `01`, and the merge tool's
+      keep-the-newest rule (§12.4) still collapses them to one row. So the protection depends on the
+      cloud save succeeding.
 12. **The cloud path depends on free tiers.** Storage is Upstash Redis (free: 256 MB, 500K commands
     per month) called from a Vercel function. Vercel's Hobby plan is licensed for personal,
     non-commercial use only, which is worth confirming before a funded or institutional deployment.
     A study of this size is negligible in storage terms — roughly 1 MB for 100 participants, against
-    the 200 KB per-session ceiling (§12.2).
+    the 200 KB per-session ceiling (§12.2). Each submission costs 2–4 Redis commands rather than 2,
+    because the id is now claimed with `HSETNX` before the count is read; even a few hundred
+    participants stays in the low thousands against a 500K monthly allowance.
 13. **The cloud store is the only place a session can be lost.** Nothing retries in the background:
     if the POST fails and the researcher closes the page, the retry button is gone with it. The
     local `.xlsx` / `.json` download remains the primary record (§12.1).
@@ -826,3 +859,23 @@ both, into Excel. Everything runs in the browser — nothing is uploaded.
   (`PART2_QUESTIONS`) and in `Questions.xlsx` `Items Part 2` row 5, in step with each other (§4). The
   item id `P4` is unchanged, so nothing downstream — shuffling, validation, export rows, the merged
   workbook's columns — is affected.
+- **A repeated participant code no longer overwrites the first record.** Two children can be handed
+  the same code, and the plain `HSET` in `api/save.js` used to drop the first child's session on the
+  floor. Now the first submission keeps the code and each later one is stored under the next free
+  suffix — `01`, `01-b`, `01-c` … up to `01-z` — so nothing is ever deleted. The suffix is claimed
+  with `HSETNX` (atomic, so simultaneous submissions cannot take the same slot), and a 27th record on
+  one code fails loudly with `502` instead of looping. The one remaining overwrite is a re-submission
+  of the *same* sitting, recognised by a matching `started_at` + `mode`, which is what makes the
+  finish screen's **Try the cloud save again** button idempotent rather than a source of phantom
+  twins. The function now returns the id it settled on plus `suffixed` / `overwritten`, and the page
+  adopts it — updating `session.participant_id`, the demographics copy inside the session and
+  `study.last.<mode>` — so the `.xlsx` / `.json` downloads carry the same id as the stored record, and
+  the researcher is told "Code 01 was already used, so this record was saved as 01-b."
+  `api/save.js` is a serverless function, so this one **needs a Vercel redeploy** (§12.2, §13.9,
+  §13.11). Two limits are recorded there: the protection depends on the cloud save succeeding (a
+  file downloaded before the cloud save resolved can still carry a duplicate code), and there is no
+  way to correct a stored record in place. See also the fixed bug below.
+- **Fixed: the finish screen printed "Participant —".** `showSubmitOverlay` still read `session.name`,
+  a field removed when the Name field became Participant ID (§5.1), so the sub-heading showed a dash
+  for every participant. It now reads `session.participant_id` and refreshes when a suffix is adopted
+  (`assets/app.js:1099-1107`).
