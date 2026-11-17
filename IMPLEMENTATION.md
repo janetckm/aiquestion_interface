@@ -566,11 +566,14 @@ both, into Excel. Everything runs in the browser — nothing is uploaded.
   When a code repeats, the dropdown label and the per-participant filename both carry the submission
   time (`tt — ai · 21:40` → `tt_20261116-2140.xlsx`), so the label is unambiguous and Option 2/3
   cannot overwrite a download named after the other record.
-- Four outputs: **(1)** one combined workbook, **(2)** one chosen participant (a dropdown listing the
+- Five outputs: **(1)** one combined workbook, **(2)** one chosen participant (a dropdown listing the
   loaded records by code, condition and submission time), **(3)** one workbook per participant,
-  bundled into a single `.zip` written by the page itself, and **(4)** the same per-participant
+  bundled into a single `.zip` written by the page itself, **(4)** the same per-participant
   workbooks with each one filed under `with-ai/` or `without-ai/` inside the zip, so the two
-  conditions can be analysed separately without splitting them by hand.
+  conditions can be analysed separately without splitting them by hand, and **(5)** Option 4's
+  grouped zip restricted to participants who typed Chinese anywhere — an answer, a post-task box, a
+  survey free-text item, or a message to the AI. A record is kept whole: its workbook still holds
+  every answer that child gave, so the item numbering in `Trial` stays intact.
 - Per-participant files are named `<participant_id>.xlsx`, plus `_<yyyyMMdd-HHmm>` when the code
   repeats (§12.4).
 - The page loads `../assets/app.js` and reuses `App.surveyRows`, so survey question text and scale
@@ -913,3 +916,10 @@ both, into Excel. Everything runs in the browser — nothing is uploaded.
   zip writer is unchanged, and repeated participant codes still carry their timestamp suffix so no two
   files collide. Tool only — needs a GitHub Pages push. The Part 2 post-task still asks "Why?"; that
   was left as it was.
+- **Option 5 pulls out the Chinese-speaking participants.** The same grouped zip as Option 4, built
+  only from records where the child typed at least one Han character — in an answer, a post-task box,
+  a survey free-text item or a message to the AI (`childText`, §12.4). The test is deliberately on
+  the child's own text only: the app's question wording and the AI's replies are English, so they
+  cannot pull a record in. Each surviving record is exported whole, keeping `Trial` numbering intact,
+  and the log reports how many were skipped so an all-English set is obvious rather than a silent
+  empty zip. Tool only — needs a GitHub Pages push.

@@ -58,6 +58,11 @@
       <button id="btn-zip-folders" class="btn">Option 4 — one workbook per participant, grouped by condition (.zip)</button>
       <span class="tiny muted">the same files, sorted into with-ai/ and without-ai/ folders</span>
     </div>
+
+    <div class="panel-row">
+      <button id="btn-zip-chinese" class="btn">Option 5 — participants who used Chinese, grouped by condition (.zip)</button>
+      <span class="tiny muted">Option 4 again, but only records with Chinese in the child's input</span>
+    </div>
   </section>
 </main>
 
@@ -77,6 +82,7 @@
   var btnOne = document.getElementById('btn-one');
   var btnZip = document.getElementById('btn-zip');
   var btnZipFolders = document.getElementById('btn-zip-folders');
+  var btnZipChinese = document.getElementById('btn-zip-chinese');
   var messages = [];
 
   function log(text) {
@@ -133,6 +139,33 @@
   function recordKey(s) {
     return (s.participant_id || s.name || 'no id') + '|' +
       (s.started_at || s.submitted_at || '') + '|' + (s.mode || '');
+  }
+
+  /* Everything the child typed: their answers, the post-task boxes (including "Why?"), the survey's
+     free-text items, and their own messages to the AI. The app's own strings — question text, the
+     AI's replies — are English, so nothing it wrote can cause a false match. */
+  function childText(s) {
+    var parts = [];
+
+    (s.answers || []).forEach(function (a) { parts.push(String(a.answer == null ? '' : a.answer)); });
+    [s.posttask, s.posttask2, s.survey].forEach(function (block) {
+      if (!block) return;
+      Object.keys(block).forEach(function (k) {
+        if (typeof block[k] === 'string') parts.push(block[k]);
+      });
+    });
+    (s.chat || []).forEach(function (m) {
+      if (m && m.role === 'user') parts.push(String(m.content == null ? '' : m.content));
+    });
+
+    return parts.join(' \u0000 ');
+  }
+
+  /* Han ideographs, including the extension A block. */
+  var CHINESE = /[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]/;
+
+  function hasChinese(s) {
+    return CHINESE.test(childText(s));
   }
 
   function finish() {
@@ -489,7 +522,18 @@
     setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
   }
 
-  /* ---------- the four download options ---------- */
+  /* ---------- the five download options ---------- */
+
+  /* One workbook per participant, each entry filed under the folder for its condition. `pairs`
+     holds { s, i } because a filtered subset — Option 5 — still needs the filename that was built
+     for that participant in the full list. */
+  function conditionZipFiles(pairs) {
+    return pairs.map(function (pair) {
+      var folder = pair.s.mode === 'ai' ? 'with-ai/' : 'without-ai/';
+      var bytes = new Uint8Array(XLSX.write(buildWorkbook([pair.s]), { bookType: 'xlsx', type: 'array' }));
+      return { name: folder + (fileNames[pair.i] || fileNameFor(pair.s, pair.i, false)), data: bytes };
+    });
+  }
 
   btnAll.addEventListener('click', function () {
     XLSX.writeFile(buildWorkbook(unique), 'study_all_sessions.xlsx');
@@ -518,14 +562,33 @@
      its condition. A zip has no separate directory list here — the `with-ai/` or `without-ai/`
      prefix in the entry name is what makes the folder when it is unpacked. */
   btnZipFolders.addEventListener('click', function () {
-    var files = unique.map(function (s, i) {
-      var folder = s.mode === 'ai' ? 'with-ai/' : 'without-ai/';
-      var bytes = new Uint8Array(XLSX.write(buildWorkbook([s]), { bookType: 'xlsx', type: 'array' }));
-      return { name: folder + (fileNames[i] || fileNameFor(s, i, false)), data: bytes };
-    });
+    var files = conditionZipFiles(unique.map(function (s, i) { return { s: s, i: i }; }));
     saveBlob(makeZip(files), 'study_sessions_by_condition.zip');
     log('Option 4: wrote study_sessions_by_condition.zip (' + files.length +
       ' workbook(s) in with-ai/ and without-ai/).');
+  });
+
+  /* Option 4 again, restricted to participants who typed Chinese somewhere — an answer, a post-task
+     box, a survey item, or a message to the AI. A record is kept whole: its workbook holds every
+     answer that child gave, so the item numbering in `Trial` stays intact. */
+  btnZipChinese.addEventListener('click', function () {
+    var kept = [];
+    var skipped = 0;
+
+    unique.forEach(function (s, i) {
+      if (hasChinese(s)) kept.push({ s: s, i: i });
+      else skipped += 1;
+    });
+
+    if (!kept.length) {
+      log('Option 5: no participant used Chinese, so nothing was written.');
+      return;
+    }
+
+    var files = conditionZipFiles(kept);
+    saveBlob(makeZip(files), 'study_sessions_chinese_by_condition.zip');
+    log('Option 5: wrote study_sessions_chinese_by_condition.zip (' + files.length +
+      ' workbook(s); skipped ' + skipped + ' participant(s) who used no Chinese).');
   });
 
   /* ---------- wiring ---------- */
