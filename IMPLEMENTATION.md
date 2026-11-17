@@ -566,9 +566,11 @@ both, into Excel. Everything runs in the browser — nothing is uploaded.
   When a code repeats, the dropdown label and the per-participant filename both carry the submission
   time (`tt — ai · 21:40` → `tt_20261116-2140.xlsx`), so the label is unambiguous and Option 2/3
   cannot overwrite a download named after the other record.
-- Three outputs: **(1)** one combined workbook, **(2)** one chosen participant (a dropdown listing the
+- Four outputs: **(1)** one combined workbook, **(2)** one chosen participant (a dropdown listing the
   loaded records by code, condition and submission time), **(3)** one workbook per participant,
-  bundled into a single `.zip` written by the page itself.
+  bundled into a single `.zip` written by the page itself, and **(4)** the same per-participant
+  workbooks with each one filed under `with-ai/` or `without-ai/` inside the zip, so the two
+  conditions can be analysed separately without splitting them by hand.
 - Per-participant files are named `<participant_id>.xlsx`, plus `_<yyyyMMdd-HHmm>` when the code
   repeats (§12.4).
 - The page loads `../assets/app.js` and reuses `App.surveyRows`, so survey question text and scale
@@ -904,3 +906,10 @@ both, into Excel. Everything runs in the browser — nothing is uploaded.
   changed: the shared 5-point scale is untouched and the block is still all-required, and the item
   count, the export columns and the merged workbook all follow from the array length, so no other code
   needed editing. Front-end only — needs a GitHub Pages push, no redeploy (§5.3, §12.1).
+- **The merge tool can now file the per-participant workbooks by condition.** Alongside the existing
+  "one workbook per participant" zip, `tools/merge-sessions.html` gained **Option 4**, which writes the
+  same `.xlsx` files as `study_sessions_by_condition.zip` with each entry under `with-ai/` or
+  `without-ai/` (§12.4). The grouping needs nothing beyond the folder prefix in the entry name, so the
+  zip writer is unchanged, and repeated participant codes still carry their timestamp suffix so no two
+  files collide. Tool only — needs a GitHub Pages push. The Part 2 post-task still asks "Why?"; that
+  was left as it was.

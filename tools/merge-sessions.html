@@ -53,6 +53,11 @@
       <button id="btn-zip" class="btn">Option 3 — one workbook per participant (.zip)</button>
       <span class="tiny muted">one .xlsx per participant, all bundled</span>
     </div>
+
+    <div class="panel-row">
+      <button id="btn-zip-folders" class="btn">Option 4 — one workbook per participant, grouped by condition (.zip)</button>
+      <span class="tiny muted">the same files, sorted into with-ai/ and without-ai/ folders</span>
+    </div>
   </section>
 </main>
 
@@ -71,6 +76,7 @@
   var btnAll = document.getElementById('btn-all');
   var btnOne = document.getElementById('btn-one');
   var btnZip = document.getElementById('btn-zip');
+  var btnZipFolders = document.getElementById('btn-zip-folders');
   var messages = [];
 
   function log(text) {
@@ -483,7 +489,7 @@
     setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
   }
 
-  /* ---------- the three download options ---------- */
+  /* ---------- the four download options ---------- */
 
   btnAll.addEventListener('click', function () {
     XLSX.writeFile(buildWorkbook(unique), 'study_all_sessions.xlsx');
@@ -506,6 +512,20 @@
     });
     saveBlob(makeZip(files), 'study_sessions_by_participant.zip');
     log('Option 3: wrote study_sessions_by_participant.zip (' + files.length + ' workbook(s)).');
+  });
+
+  /* The same one-workbook-per-participant files as Option 3, but each entry carries the folder for
+     its condition. A zip has no separate directory list here — the `with-ai/` or `without-ai/`
+     prefix in the entry name is what makes the folder when it is unpacked. */
+  btnZipFolders.addEventListener('click', function () {
+    var files = unique.map(function (s, i) {
+      var folder = s.mode === 'ai' ? 'with-ai/' : 'without-ai/';
+      var bytes = new Uint8Array(XLSX.write(buildWorkbook([s]), { bookType: 'xlsx', type: 'array' }));
+      return { name: folder + (fileNames[i] || fileNameFor(s, i, false)), data: bytes };
+    });
+    saveBlob(makeZip(files), 'study_sessions_by_condition.zip');
+    log('Option 4: wrote study_sessions_by_condition.zip (' + files.length +
+      ' workbook(s) in with-ai/ and without-ai/).');
   });
 
   /* ---------- wiring ---------- */
