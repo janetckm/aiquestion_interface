@@ -49,7 +49,7 @@ Questions.xlsx      offline master copy: 12 Part 1 items (`Items`), 12 Part 2 it
   `assets/app.js:75`. It holds the Redis token server-side; the browser only ever sees the function
   URL (§12.2).
 - SheetJS is loaded from a CDN in both study pages for `.xlsx` export; if unavailable the app falls
-  back to CSV (`assets/app.js:996-1000`). The merge tool loads SheetJS the same way, so it too needs an
+  back to CSV (`assets/app.js:990-994`). The merge tool loads SheetJS the same way, so it too needs an
   internet connection.
 
 ---
@@ -194,7 +194,7 @@ effects can be modelled.
 
 ## 5. Pre-task measures
 
-### 5.1 Demographics (step 1) — `assets/app.js:206-211`
+### 5.1 Demographics (step 1) — `assets/app.js:200-205`
 
 | Field | Type | Rules |
 | --- | --- | --- |
@@ -206,8 +206,8 @@ effects can be modelled.
 No name, or any other direct identifier, is collected. The app does **not** generate an ID: the field
 starts empty under the placeholder `e.g. P01` and must be filled in before the child can continue
 (`validateDemographics`). Whatever is typed becomes the session's `participant_id`, is repeated inside
-`demographics` (§10.2), and is the Redis field name — so a code used twice overwrites the earlier
-child's record (§13.11).
+`demographics` (§10.2), and is the Redis field name. A code used twice does **not** overwrite: the
+first record keeps it and the newcomer is stored under a suffixed id (§13.11).
 
 ### 5.2 Self-efficacy items (step 2, block "Questions") — `assets/app.js:142-164`
 
@@ -221,21 +221,18 @@ Four single-choice statements, each with the same four options
 
 ### 5.3 Intolerance-of-uncertainty statements (step 2, block "How much is this like you?")
 
-Twelve statements (`ius_1` … `ius_12`, `assets/app.js:174-187`), each answered on a shared 5-point
-scale (`assets/app.js:166-172`): 1 = "Not at all like me", 2 = "A little like me",
-3 = "Somewhat like me", 4 = "Mostly like me", 5 = "Entirely like me".
+Four statements (`ius_7`, `ius_8`, `ius_9`, `ius_11`, `assets/app.js:176-181`), each answered on a
+shared 5-point scale (`assets/app.js:166-172`): 1 = "Not at all like me", 2 = "A little like me",
+3 = "Somewhat like me", 4 = "Mostly like me", 5 = "Entirely like me". The four keep their original
+item numbers from the source instrument, so the exported columns still say which item they are.
 
-Surprise events upset me greatly · It frustrates me to not have all the information I need · Not
-knowing what could happen keeps me from enjoying life · One should always think ahead to avoid
-surprises · Plans can be ruined by things you did not think would happen · When it is time to do
-things, not knowing what could happen keeps me from acting · When I am not sure of something, I
-cannot work very well · I always want to know what will happen to me in the future · I do not like
-being taken by surprise · The smallest doubt can stop me from doing things · I should be able to
-prepare for everything in advance · Being unclear about things means I am not confident.
+When I am not sure of something, I cannot work very well · I always want to know what will happen to
+me in the future · I do not like being taken by surprise · I should be able to prepare for everything
+in advance.
 
 ### 5.4 AI-experience items (step 2, block "About AI") — **with-AI condition only**
 
-`assets/app.js:190-204`, rendered only when `condition === 'ai'` (`assets/app.js:489`):
+`assets/app.js:184-198`, rendered only when `condition === 'ai'` (`assets/app.js:483`):
 
 | id | Question | Options |
 | --- | --- | --- |
@@ -244,14 +241,14 @@ prepare for everything in advance · Being unclear about things means I am not c
 | `ai_intelligent` | When you use these tools, do they seem intelligent to you? | Yes / No |
 
 Validation: every survey item is required; if "Other" is ticked the free-text box must be filled
-(`assets/app.js:564-586`).
+(`assets/app.js:558-580`).
 
 ---
 
 ## 6. Task measures (steps 3 and 5)
 
 One row per item per participant — 12 in Part 1 and 12 in Part 2, so 24 rows per child. Fields
-(`assets/app.js:810-832`, session shape in §10):
+(`assets/app.js:804-826`, session shape in §10):
 
 | Field | Meaning |
 | --- | --- |
@@ -264,16 +261,16 @@ One row per item per participant — 12 in Part 1 and 12 in Part 2, so 24 rows p
 ### 6.1 Confidence rating
 
 - A slider labelled **"How sure are you? (0–100)"** appears inside a question card **only after the
-  child types an answer** (`assets/app.js:689-703`).
+  child types an answer** (`assets/app.js:683-697`).
 - Range 0–100, step 5. The handle starts at 50 but the numeric readout shows `—` until the child
   actually moves it, so an untouched slider is distinguishable from a deliberate rating.
 - The rating is **required**: a question with a real answer but no rating counts as unfinished and
   blocks leaving the question step; Part 2 is re-checked (hard gate) at submit while Part 1 is only
-  warned about (`assets/app.js:863-875`).
+  warned about (`assets/app.js:857-869`).
 - **Exempt:** if the typed answer is a "don't know" phrase, the slider is hidden, no rating is
   required, and any previously stored rating for that item is discarded.
 - "Don't know" detection keeps only letters and question marks, then matches `idontknow`, `dontknow`,
-  `idk`, or a string of nothing but question marks (`assets/app.js:683-686`). So all of these are
+  `idk`, or a string of nothing but question marks (`assets/app.js:677-680`). So all of these are
   treated as don't-know: `I don't know`, `i dont know`, `dont know`, `Don't know!`, `I DONT KNOW`,
   `idk`, `IDK`, `idk?`, `idontknow`, `?`, `??`, `???`.
   `dunno` and `idk` misspellings such as `i d k` are **not** matched.
@@ -292,11 +289,11 @@ One row per item per participant — 12 in Part 1 and 12 in Part 2, so 24 rows p
 
 ## 7. Post-task measures (steps 4 and 6)
 
-Rendered by `renderPostTask` (`assets/app.js:629-647`); item sets at `assets/app.js:79-133`; read and
-written by `readPostTask(part)` / `writePostTask(saved, part)` (`assets/app.js:649-678`). Both
+Rendered by `renderPostTask` (`assets/app.js:623-641`); item sets at `assets/app.js:79-133`; read and
+written by `readPostTask(part)` / `writePostTask(saved, part)` (`assets/app.js:643-672`). Both
 post-tasks reuse the pre-task survey row widget, so the same `.survey-item` validation applies; the
 free-text "Why?" item is the one difference — it renders a lone text box
-(`postTaskTextRow`, `assets/app.js:605-623`) and is complete once it holds any text.
+(`postTaskTextRow`, `assets/app.js:599-617`) and is complete once it holds any text.
 
 The first post-task sits **between** the two question parts, so its "How hard were the questions?"
 item refers to **Part 1 only** (§13.16). The second post-task closes the session.
@@ -419,7 +416,7 @@ The in-progress state is written on every change and on `beforeunload`, and clea
 header **Reset** button wipes all of it and reloads a blank form for the next participant
 (`assets/ai.js:209-222`, `assets/noai.js:75-88`).
 
-### 10.2 Submitted session object (`buildSession`, `assets/app.js:1042-1073`)
+### 10.2 Submitted session object (`buildSession`, `assets/app.js:1036-1067`)
 
 ```json
 {
@@ -428,7 +425,7 @@ header **Reset** button wipes all of it and reloads a blank form for the next pa
   "started_at": "2026-11-09T09:00:00.000Z",
   "submitted_at": "2026-11-09T09:08:41.000Z",
   "demographics": { "participant_id": "ai-20261109-090000-k3x9", "age": "9", "grade": "4", "gender": "Female" },
-  "survey":   { "facts_good": "...", "ius_1": 4, "ai_heard": "Yes", "ai_tools": ["Siri"], "ai_tools_other": "" },
+  "survey":   { "facts_good": "...", "ius_7": 4, "ai_heard": "Yes", "ai_tools": ["Siri"], "ai_tools_other": "" },
   "posttask": { "pt_difficulty": "Medium", "pt_idk_ok": "A bit OK", "pt_why": "because guessing is fine" },
   "posttask2": { "pt_difficulty": "Hard", "pt_ai_right": "Sometimes", "pt_idk_ok": "Totally OK", "pt_why": "because the AI helps", "pt_ai_use": "Sometimes", "pt_believe_ai": "Maybe" },
   "answers": [
@@ -478,9 +475,9 @@ Practical notes for analysis:
 
 ### 12.1 Local downloads (finish screen)
 
-Filenames: `study_<mode>_<participant_id>_<YYYYMMDD_HHMMSS>.<ext>` (`assets/app.js:886-889`).
+Filenames: `study_<mode>_<participant_id>_<YYYYMMDD_HHMMSS>.<ext>` (`assets/app.js:880-883`).
 
-**XLSX (default)** — sheets (`assets/app.js:995-1040`):
+**XLSX (default)** — sheets (`assets/app.js:989-1034`):
 
 | Sheet | Contents |
 | --- | --- |
@@ -489,7 +486,7 @@ Filenames: `study_<mode>_<participant_id>_<YYYYMMDD_HHMMSS>.<ext>` (`assets/app.
 | `Survey` | pre-task survey, then the `Post-task` block (Part 1) and the `Post-task 2` block (Part 2), each with numeric scores where applicable |
 | `Chat` | `#, Role, Message, Time` — present only when a chat exists |
 
-**CSV** fallback (`assets/app.js:966-988`) contains the same blocks in one file with a UTF-8 BOM.
+**CSV** fallback (`assets/app.js:960-982`) contains the same blocks in one file with a UTF-8 BOM.
 **JSON** export is the verbatim session object and is the safest archive format — it is the only
 export that preserves the nested `answers`, `survey` and `chat` structures unambiguously.
 
@@ -521,13 +518,13 @@ forgets to download it before the next participant.
   The response carries `participant_id` (the id actually used), `requested_id`, and the flags
   `suffixed` / `overwritten`; the page adopts the resolved id so the local downloads and the
   `study.last.<mode>` copy match the stored record, and tells the researcher
-  "Code 01 was already used, so this record was saved as 01-b." (`assets/app.js:1089-1153`, §13.11).
+  "Code 01 was already used, so this record was saved as 01-b." (`assets/app.js:1083-1147`, §13.11).
 - **Request:** `POST` with `{ "participant_id": "...", "session": { … } }`, sent with
-  `Content-Type: application/json` and `keepalive: true` (`assets/app.js:1075-1087`) so the request
+  `Content-Type: application/json` and `keepalive: true` (`assets/app.js:1069-1081`) so the request
   still lands if the child closes the page right after submitting.
 - **Failure does not block the child.** The finish screen reports "Saved to the study database
   (`<id>`)" or turns the line into a warning and reveals a **Try the cloud save again** button; the
-  download buttons stay available in either case (`assets/app.js:1089-1190`).
+  download buttons stay available in either case (`assets/app.js:1083-1184`).
 - **Size guard:** the function returns `413` for a session over 200 KB, far above the ~14 KB a
   60-message chat produces. Vercel also caps a request body at ~4.5 MB.
 - **Environment variables** (Vercel → Project → Settings → Environment Variables):
@@ -717,17 +714,17 @@ both, into Excel. Everything runs in the browser — nothing is uploaded.
 | The 12 Part 1 quiz items — and each item's `wrong` answer | `assets/app.js:7-20` **and** `Questions.xlsx` (`Items` sheet) |
 | The 12 Part 2 quiz items — and each item's `wrong` answer | `assets/app.js:25-38` **and** `Questions.xlsx` (`Items Part 2` sheet) |
 | Question wording/options for self-efficacy | `assets/app.js:142-164` |
-| IUS statements / scale labels | `assets/app.js:166-187` |
-| AI-only pre-task items | `assets/app.js:190-204` |
+| IUS statements / scale labels | `assets/app.js:166-181` |
+| AI-only pre-task items | `assets/app.js:184-198` |
 | Post-task items (both post-tasks, all three sets) | `assets/app.js:79-133` **and** `Questions.xlsx` (`Post-task items` sheet) |
 | Which post-task item set each condition/step gets | `postTaskQuestions`, `assets/app.js:136-139` |
-| The `post-` / `post2-` radio prefix that keeps the two post-tasks apart | `postTaskPrefix`, `assets/app.js:596-598` |
-| The post-tasks' "Why?" text boxes | `postTaskTextRow`, `assets/app.js:605-623` |
-| Demographics fields | `assets/app.js:206-211` |
+| The `post-` / `post2-` radio prefix that keeps the two post-tasks apart | `postTaskPrefix`, `assets/app.js:590-592` |
+| The post-tasks' "Why?" text boxes | `postTaskTextRow`, `assets/app.js:599-617` |
+| Demographics fields | `assets/app.js:200-205` |
 | WrongBot persona / rules | `assets/ai.js:12-27` |
 | The pinned wrong answers the AI must give (the `wrong` fields, §8) | `assets/app.js:7-38` **and** `Questions.xlsx` (`Items` / `Items Part 2` col. E) |
 | The pinned-answer script and how it is built | `buildSystemPrompt`, `assets/ai.js:343-356` |
-| Confidence slider range/step/labels | `assets/app.js:689-703` |
+| Confidence slider range/step/labels | `assets/app.js:683-697` |
 | Model, temperature, max tokens, streaming | `api/chat.js:58-65` and the Vercel env vars |
 | API endpoint used by the page | `assets/ai.js:13` |
 | Switching the cloud backup off | `SAVE_ENDPOINT` in `assets/app.js:75` (set to `''`) |
@@ -785,7 +782,7 @@ both, into Excel. Everything runs in the browser — nothing is uploaded.
   below. Because the
   item ids are shared, the second post-task names its radios `post2-<id>` and reads/writes through
   `#posttask2`, so the two steps stay independent radio groups (`postTaskPrefix` /
-  `postTaskContainer`, `assets/app.js:596-603`). The session object gained a `posttask2` block
+  `postTaskContainer`, `assets/app.js:590-597`). The session object gained a `posttask2` block
   (`buildSession`, 8th argument), the `Survey` sheet exports a second `Post-task 2` block (§12.1), and
   the merge tool suffixes the second post-task's columns with `_2` to avoid clashing with the first
   (§12.4).
@@ -814,7 +811,7 @@ both, into Excel. Everything runs in the browser — nothing is uploaded.
   longer asked at all and the remaining AI items are asked only after Part 2 (§13.21). `Questions.xlsx`
   `Post-task items` was rebuilt accordingly (`A1:F8`; the two step-4 columns became one), and the
   workbook's other sheets are unchanged.
-- **More ways to say "I don't know".** `isDontKnow` (`assets/app.js:683-686`) now also accepts `idk`
+- **More ways to say "I don't know".** `isDontKnow` (`assets/app.js:677-680`) now also accepts `idk`
   (with or without a trailing `?`) and a string of nothing but question marks (`?`, `??`, `???`),
   alongside the existing `I don't know` / `dont know` / `idontknow`. Those answers hide the confidence
   slider and are exempt from the rating requirement, exactly as before (§6.1). The game intro on both
@@ -899,4 +896,11 @@ both, into Excel. Everything runs in the browser — nothing is uploaded.
 - **Fixed: the finish screen printed "Participant —".** `showSubmitOverlay` still read `session.name`,
   a field removed when the Name field became Participant ID (§5.1), so the sub-heading showed a dash
   for every participant. It now reads `session.participant_id` and refreshes when a suffix is adopted
-  (`assets/app.js:1099-1107`).
+  (`assets/app.js:1093-1101`).
+- **The IUS block was cut from twelve statements to four.** The pre-task block "How much is this like
+  you?" (`SURVEY_STATEMENTS`, §5.3) asked all twelve intolerance-of-uncertainty statements; it now
+  asks only `ius_7`, `ius_8`, `ius_9` and `ius_11`, which keep their original item numbers so the
+  `Survey` sheet's columns still say which item of the source instrument each answer is. Nothing else
+  changed: the shared 5-point scale is untouched and the block is still all-required, and the item
+  count, the export columns and the merged workbook all follow from the array length, so no other code
+  needed editing. Front-end only — needs a GitHub Pages push, no redeploy (§5.3, §12.1).

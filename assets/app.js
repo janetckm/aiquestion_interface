@@ -171,19 +171,13 @@ window.App = (function () {
     ['5', 'Entirely like me']
   ];
 
+  /* Four statements, kept at their original IUS item numbers so the exported column names
+     still say which item of the source instrument they are. */
   var SURVEY_STATEMENTS = [
-    { id: 'ius_1', text: 'Surprise events upset me greatly' },
-    { id: 'ius_2', text: 'It frustrates me to not have all the information I need' },
-    { id: 'ius_3', text: 'Not knowing what could happen keeps me from enjoying life' },
-    { id: 'ius_4', text: 'One should always think ahead to avoid surprises' },
-    { id: 'ius_5', text: 'Plans can be ruined by things you did not think would happen' },
-    { id: 'ius_6', text: 'When it is time to do things, not knowing what could happen keeps me from acting' },
     { id: 'ius_7', text: 'When I am not sure of something, I cannot work very well' },
     { id: 'ius_8', text: 'I always want to know what will happen to me in the future' },
     { id: 'ius_9', text: 'I do not like being taken by surprise' },
-    { id: 'ius_10', text: 'The smallest doubt can stop me from doing things' },
-    { id: 'ius_11', text: 'I should be able to prepare for everything in advance' },
-    { id: 'ius_12', text: 'Being unclear about things means I am not confident' }
+    { id: 'ius_11', text: 'I should be able to prepare for everything in advance' }
   ];
 
   /* Extra survey questions asked in the with-AI condition only. */
