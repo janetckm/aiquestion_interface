@@ -63,6 +63,11 @@
       <button id="btn-zip-chinese" class="btn">Option 5 — participants who used Chinese, grouped by condition (.zip)</button>
       <span class="tiny muted">Option 4 again, but only records with Chinese in the child's input</span>
     </div>
+
+    <div class="panel-row">
+      <button id="btn-zip-grade" class="btn">Option 6 — one workbook per participant, grouped by grade + condition (.zip)</button>
+      <span class="tiny muted">every record, in grade3-withai / grade3-withoutai folders; "-translated" if the child wrote in another language</span>
+    </div>
   </section>
 </main>
 
@@ -83,6 +88,7 @@
   var btnZip = document.getElementById('btn-zip');
   var btnZipFolders = document.getElementById('btn-zip-folders');
   var btnZipChinese = document.getElementById('btn-zip-chinese');
+  var btnZipGrade = document.getElementById('btn-zip-grade');
   var messages = [];
 
   function log(text) {
@@ -95,6 +101,7 @@
   var sessions = [];
   var unique = [];
   var fileNames = [];
+  var idCounts = {};
 
   function addFile(name, data) {
     var list = Array.isArray(data) ? data : [data];
@@ -168,6 +175,13 @@
     return CHINESE.test(childText(s));
   }
 
+  /* True when the child wrote in any language but English — Chinese, Cyrillic, Greek, or accented
+     Latin (café, sí) all leave a letter that is not A-Z/a-z. Digits and punctuation are stripped
+     first, so a phone's curly apostrophe or an em dash cannot mark an English record. */
+  function isTranslated(s) {
+    return /\p{L}/u.test(childText(s).replace(/[A-Za-z]/g, ''));
+  }
+
   function finish() {
     if (!sessions.length) {
       log('No sessions found.');
@@ -196,13 +210,13 @@
 
     /* Two children can share a code, so a repeated id gets the submission time in its filename
        and its dropdown label — otherwise the two downloads would overwrite each other. */
-    var idCounts = {};
+    idCounts = {};
     unique.forEach(function (s) {
       var id = String(s.participant_id || '');
       idCounts[id] = (idCounts[id] || 0) + 1;
     });
     fileNames = unique.map(function (s, i) {
-      return fileNameFor(s, i, (idCounts[String(s.participant_id || '')] || 0) > 1);
+      return fileNameFor(s, i, repeatedId(s));
     });
 
     var withAI = unique.filter(function (s) { return s.mode === 'ai'; }).length;
@@ -244,15 +258,30 @@
   }
 
   /* Files stay keyed by the participant code. A repeated code also carries the submission time,
-     so two per-participant downloads cannot overwrite each other. */
-  function fileNameFor(s, i, repeated) {
+     so two per-participant downloads cannot overwrite each other. Option 6 slips "-translated"
+     in after the code when the child wrote in a language other than English. */
+  function fileNameFor(s, i, repeated, translated) {
     var id = String(s.participant_id || ('participant-' + (i + 1))).replace(/[^A-Za-z0-9._-]/g, '_');
+    if (translated) id += '-translated';
     if (repeated) {
       var d = new Date(s.submitted_at);
       id += '_' + (isNaN(d) ? 'unknown' : d.getFullYear() + pad(d.getMonth() + 1) +
         pad(d.getDate()) + '-' + pad(d.getHours()) + pad(d.getMinutes()));
     }
     return id + '.xlsx';
+  }
+
+  function repeatedId(s) {
+    return (idCounts[String(s.participant_id || '')] || 0) > 1;
+  }
+
+  /* Folders read "grade3-withai" — one per grade and condition, so grade 3's two arms, grade 4's two
+     arms and so on never mix. The grade is free text from the demographics form, so a character a
+     filesystem dislikes is replaced rather than dropped. */
+  function gradeFolder(s) {
+    var grade = String((s.demographics && s.demographics.grade) || '').trim() || 'Unknown';
+    grade = grade.replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_');
+    return 'grade' + grade + '-' + (s.mode === 'ai' ? 'withai' : 'withoutai');
   }
 
   /* ---------- workbook ---------- */
@@ -522,7 +551,7 @@
     setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
   }
 
-  /* ---------- the five download options ---------- */
+  /* ---------- the six download options ---------- */
 
   /* One workbook per participant, each entry filed under the folder for its condition. `pairs`
      holds { s, i } because a filtered subset — Option 5 — still needs the filename that was built
@@ -589,6 +618,25 @@
     saveBlob(makeZip(files), 'study_sessions_chinese_by_condition.zip');
     log('Option 5: wrote study_sessions_chinese_by_condition.zip (' + files.length +
       ' workbook(s); skipped ' + skipped + ' participant(s) who used no Chinese).');
+  });
+
+  /* Every record, filed by the demographics grade and the condition, so one grade's two arms come
+     out as two folders. A record whose child wrote in another language is marked "-translated" in
+     its filename, which is what flags it for translation before the two arms are compared. */
+  btnZipGrade.addEventListener('click', function () {
+    var translated = unique.filter(isTranslated).length;
+
+    var files = unique.map(function (s, i) {
+      var bytes = new Uint8Array(XLSX.write(buildWorkbook([s]), { bookType: 'xlsx', type: 'array' }));
+      return {
+        name: gradeFolder(s) + '/' + fileNameFor(s, i, repeatedId(s), isTranslated(s)),
+        data: bytes
+      };
+    });
+
+    saveBlob(makeZip(files), 'study_sessions_by_grade.zip');
+    log('Option 6: wrote study_sessions_by_grade.zip (' + files.length + ' workbook(s); ' +
+      translated + ' marked -translated, ' + (files.length - translated) + ' in English).');
   });
 
   /* ---------- wiring ---------- */

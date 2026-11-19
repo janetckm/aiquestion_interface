@@ -566,14 +566,17 @@ both, into Excel. Everything runs in the browser — nothing is uploaded.
   When a code repeats, the dropdown label and the per-participant filename both carry the submission
   time (`tt — ai · 21:40` → `tt_20261116-2140.xlsx`), so the label is unambiguous and Option 2/3
   cannot overwrite a download named after the other record.
-- Five outputs: **(1)** one combined workbook, **(2)** one chosen participant (a dropdown listing the
+- Six outputs: **(1)** one combined workbook, **(2)** one chosen participant (a dropdown listing the
   loaded records by code, condition and submission time), **(3)** one workbook per participant,
   bundled into a single `.zip` written by the page itself, **(4)** the same per-participant
   workbooks with each one filed under `with-ai/` or `without-ai/` inside the zip, so the two
-  conditions can be analysed separately without splitting them by hand, and **(5)** Option 4's
+  conditions can be analysed separately without splitting them by hand, **(5)** Option 4's
   grouped zip restricted to participants who typed Chinese anywhere — an answer, a post-task box, a
-  survey free-text item, or a message to the AI. A record is kept whole: its workbook still holds
-  every answer that child gave, so the item numbering in `Trial` stays intact.
+  survey free-text item, or a message to the AI — with each surviving record still exported whole, so
+  the item numbering in `Trial` stays intact, and **(6)** every record filed by grade and condition
+  (`grade3-withai/`, `grade3-withoutai/`, `grade4-withai/`, …). Option 6 also appends `-translated` to the filename
+  of any record whose child wrote in a language other than English, which is the list to translate
+  before the two arms of a grade are compared.
 - Per-participant files are named `<participant_id>.xlsx`, plus `_<yyyyMMdd-HHmm>` when the code
   repeats (§12.4).
 - The page loads `../assets/app.js` and reuses `App.surveyRows`, so survey question text and scale
@@ -923,3 +926,11 @@ both, into Excel. Everything runs in the browser — nothing is uploaded.
   cannot pull a record in. Each surviving record is exported whole, keeping `Trial` numbering intact,
   and the log reports how many were skipped so an all-English set is obvious rather than a silent
   empty zip. Tool only — needs a GitHub Pages push.
+- **Option 6 files everything by grade and marks what needs translating.** The zip's folders are
+  `grade<grade>-withai` / `grade<grade>-withoutai` — one per grade and condition, so grade 3's two
+  arms, grade 4's two arms and so on never mix — from the free-text `grade` demographic
+  (`assets/app.js:203`; a blank one becomes `gradeUnknown-withai`), and any record whose child wrote in a
+  language other than English has `-translated` appended to its filename
+  (`01.xlsx` → `01-translated.xlsx`, §12.4). "Other language" means a letter that is not `A–Z`/`a–z`,
+  so Chinese, Cyrillic and accented Latin (`sí`) all count, while digits and punctuation are ignored
+  — a phone's curly apostrophe cannot mark an English record. Tool only — needs a GitHub Pages push.
